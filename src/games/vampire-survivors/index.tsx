@@ -33,7 +33,7 @@ const AURA = 86;
 const TOUCH_HIT = 20;
 const WIN_SCORE = 12;
 const MOVE_SPEED = 3.2;
-const PAD_STEP = 2.6;
+const PAD_STEP = 5.8;
 
 function artFor(profileId: ProfileId): ArtPack {
   switch (profileId) {
@@ -148,9 +148,17 @@ export default function VampireSurvivorsGame({
       x: number,
       y: number,
       size: number,
+      clip: "circle" | "none" = "circle",
     ) => {
       if (img && img.complete && img.naturalWidth > 0) {
+        ctx.save();
+        if (clip === "circle") {
+          ctx.beginPath();
+          ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+          ctx.clip();
+        }
         ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
+        ctx.restore();
         return;
       }
       ctx.fillStyle = art.aura;
@@ -192,7 +200,7 @@ export default function VampireSurvivorsGame({
       for (const p of pops.current) {
         if (p.kind === "zap") {
           ctx.globalAlpha = Math.min(1, p.life / 18);
-          drawSprite(images.current.zap, p.x, p.y, 64);
+                  drawSprite(images.current.zap, p.x, p.y, 64, "none");
           ctx.globalAlpha = 1;
         } else {
           ctx.globalAlpha = Math.min(1, p.life / 24);
@@ -303,6 +311,12 @@ export default function VampireSurvivorsGame({
 
   const ended = !alive || won;
 
+  const nudge = (dx: number, dy: number) => {
+    if (!alive || paused || won) return;
+    px.current = Math.max(28, Math.min(W - 28, px.current + dx));
+    py.current = Math.max(36, Math.min(H - 28, py.current + dy));
+  };
+
   return (
     <div className="flex w-full flex-col items-center gap-3">
       <div className="flex w-full max-w-md items-center justify-between gap-2 text-lg font-black text-[var(--ink)]">
@@ -355,6 +369,7 @@ export default function VampireSurvivorsGame({
           onHold={(on) => {
             padDir.current.y = on ? -1 : 0;
           }}
+          onTap={() => nudge(0, -28)}
         />
         <div />
         <Pad
@@ -362,18 +377,21 @@ export default function VampireSurvivorsGame({
           onHold={(on) => {
             padDir.current.x = on ? -1 : 0;
           }}
+          onTap={() => nudge(-28, 0)}
         />
         <Pad
           label="↓"
           onHold={(on) => {
             padDir.current.y = on ? 1 : 0;
           }}
+          onTap={() => nudge(0, 28)}
         />
         <Pad
           label="→"
           onHold={(on) => {
             padDir.current.x = on ? 1 : 0;
           }}
+          onTap={() => nudge(28, 0)}
         />
       </div>
       <p className="text-center text-sm font-medium text-[var(--ink)]/70">
@@ -396,9 +414,11 @@ export default function VampireSurvivorsGame({
 function Pad({
   label,
   onHold,
+  onTap,
 }: {
   label: string;
   onHold: (down: boolean) => void;
+  onTap: () => void;
 }) {
   return (
     <button
@@ -411,6 +431,7 @@ function Pad({
       onPointerUp={() => onHold(false)}
       onPointerLeave={() => onHold(false)}
       onPointerCancel={() => onHold(false)}
+      onClick={onTap}
     >
       {label}
     </button>
