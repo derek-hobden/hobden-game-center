@@ -245,7 +245,7 @@ export default function MahjongGame({
       )}
 
       <div
-        className="relative w-full overflow-visible rounded-[1.6rem] border-4 border-white/70 shadow-lg"
+        className="relative w-full overflow-hidden rounded-[1.6rem] border-4 border-white/70 shadow-lg"
         style={{ aspectRatio: "1 / 1.05" }}
       >
         <img
@@ -254,7 +254,7 @@ export default function MahjongGame({
           className="absolute inset-0 h-full w-full rounded-[1.35rem] object-cover"
           draggable={false}
         />
-        <div className="absolute inset-0 grid grid-cols-4 grid-rows-4 gap-[0.45rem] p-3 sm:p-4">
+        <div className="absolute inset-0 grid grid-cols-4 grid-rows-4 gap-[0.45rem] p-4 pt-6 pr-5 sm:p-5">
           {SLOTS.filter((slot) => slot.layer === 0).map((slot) => {
             const tile = tiles.find((t) => t.slotId === slot.id);
             if (!tile) return null;
@@ -272,18 +272,18 @@ export default function MahjongGame({
             );
           })}
         </div>
-        <div className="pointer-events-none absolute inset-0 z-10 grid grid-cols-4 grid-rows-4 gap-[0.45rem] p-3 sm:p-4">
+        <div className="pointer-events-none absolute inset-0 grid grid-cols-4 grid-rows-4 gap-[0.45rem] p-4 pt-6 pr-5 sm:p-5">
           {SLOTS.filter((slot) => slot.layer === 1).map((slot) => {
             const tile = tiles.find((t) => t.slotId === slot.id);
             if (!tile || tile.matched) return null;
             return (
               <div
                 key={slot.id}
-                className="pointer-events-auto z-20"
+                className="pointer-events-auto"
                 style={{
                   gridColumn: slot.col + 1,
                   gridRow: slot.row + 1,
-                  transform: "translate(12px, -16px)",
+                  transform: "translate(10px, -14px)",
                 }}
               >
                 <TileButton
