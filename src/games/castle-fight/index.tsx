@@ -26,8 +26,8 @@ type UnitStats = {
 
 const TICK_MS = 520;
 const LANE = 100;
-const HOME_GATE = 12;
-const FOE_GATE = 88;
+const HOME_GATE = 22;
+const FOE_GATE = 78;
 const MELEE_RANGE = 8;
 const CASTLE_HP = 80;
 const CASTLE_HIT = 5;
@@ -261,7 +261,7 @@ export default function CastleFightGame({
     const stats = unitStats(kind);
     const unit: Unit = {
       id: idRef.current++,
-      x: side === "you" ? HOME_GATE + 2 : FOE_GATE - 2,
+      x: side === "you" ? HOME_GATE + 4 : FOE_GATE - 4,
       side,
       kind,
       hp: stats.hp,
@@ -396,7 +396,7 @@ export default function CastleFightGame({
       </div>
 
       <div className="overflow-hidden rounded-3xl border-4 border-white/80 shadow-lg">
-        <div className="relative h-52 sm:h-60">
+        <div className="relative h-56 sm:h-64">
           <img
             src={battlefieldSrc(profileId)}
             alt=""
@@ -420,14 +420,14 @@ export default function CastleFightGame({
           <img
             src={homeCastleSrc(profileId)}
             alt="Your castle"
-            className={`absolute bottom-2 left-1 h-24 w-24 rounded-2xl object-cover shadow-md ring-2 ring-white/80 transition ${
+            className={`absolute bottom-1 left-0 z-10 h-[4.5rem] w-[4.5rem] rounded-2xl object-cover shadow-md ring-2 ring-white/80 transition ${
               homeFlash ? "brightness-125 scale-105" : ""
             }`}
           />
           <img
             src={foeCastleSrc(profileId)}
             alt="Their castle"
-            className={`absolute bottom-2 right-1 h-24 w-24 rounded-2xl object-cover shadow-md ring-2 ring-white/80 transition ${
+            className={`absolute bottom-1 right-0 z-10 h-[4.5rem] w-[4.5rem] rounded-2xl object-cover shadow-md ring-2 ring-white/80 transition ${
               foeFlash ? "brightness-125 scale-105" : ""
             }`}
           />
@@ -435,7 +435,7 @@ export default function CastleFightGame({
           {units.map((u) => (
             <div
               key={u.id}
-              className="absolute bottom-8 transition-all duration-500"
+              className="absolute bottom-4 z-20 transition-all duration-500"
               style={{
                 left: `${u.x}%`,
                 transform: "translateX(-50%)",
