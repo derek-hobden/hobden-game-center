@@ -245,13 +245,13 @@ export default function MahjongGame({
       )}
 
       <div
-        className="relative w-full overflow-hidden rounded-[1.6rem] border-4 border-white/70 shadow-lg"
+        className="relative w-full overflow-visible rounded-[1.6rem] border-4 border-white/70 shadow-lg"
         style={{ aspectRatio: "1 / 1.05" }}
       >
         <img
           src={tableSrc(profileId)}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full rounded-[1.35rem] object-cover"
           draggable={false}
         />
         <div className="absolute inset-0 grid grid-cols-4 grid-rows-4 gap-[0.45rem] p-3 sm:p-4">
@@ -272,18 +272,18 @@ export default function MahjongGame({
             );
           })}
         </div>
-        <div className="pointer-events-none absolute inset-0 grid grid-cols-4 grid-rows-4 gap-[0.45rem] p-3 sm:p-4">
+        <div className="pointer-events-none absolute inset-0 z-10 grid grid-cols-4 grid-rows-4 gap-[0.45rem] p-3 sm:p-4">
           {SLOTS.filter((slot) => slot.layer === 1).map((slot) => {
             const tile = tiles.find((t) => t.slotId === slot.id);
             if (!tile || tile.matched) return null;
             return (
               <div
                 key={slot.id}
-                className="pointer-events-auto"
+                className="pointer-events-auto z-20"
                 style={{
                   gridColumn: slot.col + 1,
                   gridRow: slot.row + 1,
-                  transform: "translate(10%, -12%)",
+                  transform: "translate(12px, -16px)",
                 }}
               >
                 <TileButton
@@ -352,10 +352,13 @@ function TileButton({
           ? "border-amber-300 ring-4 ring-amber-200"
           : hinted
             ? "border-lime-300 ring-4 ring-lime-200"
-            : "border-white",
-        !free && "opacity-80",
+            : stacked
+              ? "border-amber-100"
+              : "border-white",
+        !free && "brightness-90",
         shaking && "animate-pulse",
-        stacked && "shadow-[6px_10px_0_rgba(40,20,50,0.28)]",
+        stacked &&
+          "shadow-[8px_12px_0_rgba(40,20,50,0.32)] ring-2 ring-white/80",
       )}
       onClick={onTap}
     >
