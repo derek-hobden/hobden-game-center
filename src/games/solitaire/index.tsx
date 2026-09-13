@@ -526,7 +526,7 @@ export default function SolitaireGame({
           </div>
         ) : (
           <p className="rounded-2xl bg-black/35 px-3 py-2 text-center text-sm font-semibold text-white">
-            {hintCopy(profileId)} Double-tap a card to send it home.
+            {hintCopy(profileId)}
           </p>
         )}
       </div>

@@ -80,9 +80,9 @@ export function rankTone(profileId: ProfileId, suit: number): string {
 export function hintCopy(profileId: ProfileId): string {
   switch (profileId) {
     case "keira":
-      return "Tap a card. Glow means it can go there — home nests or a stack 1 smaller with a different picture.";
+      return "Tap a card, then a glowing nest. Double-tap sends it home.";
     case "luke":
-      return "Tap a card. Glow means it can go there — home pads or a stack 1 smaller with a different picture.";
+      return "Tap a card, then a glowing pad. Double-tap sends it home.";
     default:
       return assertNever(profileId);
   }
