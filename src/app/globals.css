@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+:root {
+  --accent: #0ea5e9;
+  --accent-fg: #042f4a;
+  --ink: #0b2a3d;
+  --surface: #f8fafc;
+  --surface-2: #e2e8f0;
+  --sky-from: #e0f2fe;
+  --sky-to: #bbf7d0;
+  --tile-glow: rgba(14, 165, 233, 0.28);
+  --pattern: radial-gradient(
+      circle at 20% 20%,
+      rgba(56, 189, 248, 0.35),
+      transparent 40%
+    ),
+    radial-gradient(circle at 80% 0%, rgba(250, 204, 21, 0.28), transparent 35%);
+  --background: var(--sky-from);
+  --foreground: var(--ink);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-display);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  color: var(--ink);
+  font-family: var(--font-display), "Trebuchet MS", sans-serif;
+  background:
+    var(--pattern),
+    linear-gradient(165deg, var(--sky-from), var(--sky-to) 55%, #fff8ef);
+  background-attachment: fixed;
+}
+
+.brand-mark {
+  background: linear-gradient(120deg, var(--ink), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: -0.03em;
+}
+
+.hero-enter {
+  animation: rise-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.profile-card {
+  animation: pop-in 480ms cubic-bezier(0.2, 0.85, 0.2, 1) both;
+}
+
+.menu-tile {
+  animation: rise-in 460ms cubic-bezier(0.2, 0.85, 0.2, 1) both;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-enter,
+  .profile-card,
+  .menu-tile {
+    animation: none;
+  }
+}
