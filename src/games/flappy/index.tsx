@@ -99,7 +99,6 @@ export default function FlappyGame({
   const overRef = useRef(false);
   const bursts = useRef<Burst[]>([]);
   const groundX = useRef(0);
-  const skyX = useRef(0);
   const flapPulse = useRef(0);
   const [score, setScore] = useState(0);
   const [over, setOver] = useState(false);
@@ -188,13 +187,7 @@ export default function FlappyGame({
     const draw = (ts: number) => {
       const imgs = art.current;
       if (imgs.sky) {
-        const sw = imgs.sky.width;
-        const sh = imgs.sky.height;
-        const scale = H / sh;
-        const dw = sw * scale;
-        const ox = -(skyX.current % dw);
-        ctx.drawImage(imgs.sky, ox, 0, dw, H);
-        ctx.drawImage(imgs.sky, ox + dw - 1, 0, dw, H);
+        ctx.drawImage(imgs.sky, 0, 0, W, H);
       } else {
         const g = ctx.createLinearGradient(0, 0, 0, H);
         g.addColorStop(0, theme.skyFrom);
@@ -299,7 +292,6 @@ export default function FlappyGame({
           }
 
           groundX.current += PIPE_SPEED * 0.85;
-          skyX.current += PIPE_SPEED * 0.18;
 
           if (firstDelay) {
             if (ts - spawn > FIRST_PIPE_MS) {
