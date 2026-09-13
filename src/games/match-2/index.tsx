@@ -189,11 +189,11 @@ export default function Match2Game({
         <img src={art.bg} alt="" className="h-full w-full object-cover" />
       </div>
 
-      <div className="flex w-full max-w-md items-center gap-3 rounded-3xl bg-white/85 px-3 py-2 shadow-sm backdrop-blur-sm">
+      <div className="flex w-full max-w-md items-center gap-2 rounded-3xl bg-white/85 px-3 py-2 shadow-sm backdrop-blur-sm">
         <img
           src={art.card}
           alt=""
-          className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-md"
+          className="h-14 w-14 shrink-0 rounded-2xl object-cover shadow-md"
         />
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-black text-[var(--ink)]">
@@ -216,7 +216,7 @@ export default function Match2Game({
         type="button"
         disabled={paused || won || hintsLeft <= 0 || lock}
         className={cn(
-          "flex min-h-14 w-full max-w-md items-center justify-center rounded-2xl border-4 px-3 py-2 text-base font-black shadow-sm active:scale-[0.99] disabled:opacity-50",
+          "flex min-h-12 w-full max-w-md items-center justify-center rounded-2xl border-4 px-3 py-2 text-base font-black shadow-sm active:scale-[0.99] disabled:opacity-50",
           hintsLeft > 0
             ? "border-amber-300 bg-amber-100 text-amber-950"
             : "border-white/70 bg-white/80 text-[var(--ink)]",
@@ -226,14 +226,23 @@ export default function Match2Game({
         {art.hintLabel} · {hintsLeft} left
       </button>
 
-      <p
-        className={cn(
-          "min-h-10 px-2 text-center text-base font-black text-[var(--ink)]",
-          matchPop && "animate-bounce",
-        )}
-      >
-        {statusLine}
-      </p>
+      {won ? (
+        <div className="w-full max-w-md rounded-3xl bg-emerald-200/95 px-4 py-3 text-center shadow-md">
+          <p className="text-xl font-black text-emerald-950">{art.win}</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-900">
+            {moves} moves · tap New game to play again
+          </p>
+        </div>
+      ) : (
+        <p
+          className={cn(
+            "min-h-8 px-2 text-center text-base font-black text-[var(--ink)]",
+            matchPop && "animate-bounce",
+          )}
+        >
+          {statusLine}
+        </p>
+      )}
 
       <div className="grid w-full max-w-md grid-cols-3 gap-2.5 rounded-3xl border-4 border-white/70 bg-white/40 p-2 shadow-lg backdrop-blur-[2px] sm:gap-3 sm:p-3">
         {cards.map((card, index) => {
@@ -245,7 +254,7 @@ export default function Match2Game({
               disabled={paused || card.matched}
               aria-label={faceUp ? card.label : "Hidden card"}
               className={cn(
-                "relative aspect-square min-h-[96px] overflow-hidden rounded-3xl border-4 shadow-md transition duration-200 touch-manipulation [perspective:700px] active:scale-95 sm:min-h-[108px]",
+                "relative aspect-square min-h-[80px] overflow-hidden rounded-3xl border-4 shadow-md transition duration-200 touch-manipulation [perspective:700px] active:scale-95 sm:min-h-[108px]",
                 card.matched
                   ? "border-emerald-300"
                   : faceUp
@@ -280,14 +289,6 @@ export default function Match2Game({
         })}
       </div>
 
-      {won ? (
-        <div className="w-full max-w-md rounded-3xl bg-emerald-200/95 px-4 py-5 text-center shadow-md">
-          <p className="text-2xl font-black text-emerald-950">{art.win}</p>
-          <p className="mt-1 text-base font-semibold text-emerald-900">
-            {moves} moves · tap New game to play again
-          </p>
-        </div>
-      ) : null}
     </div>
   );
 }
