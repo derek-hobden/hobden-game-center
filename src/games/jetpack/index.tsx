@@ -50,17 +50,17 @@ function artFor(profileId: ProfileId): ArtPack {
   switch (profileId) {
     case "keira":
       return {
-        hero: "/games/jetpack/keira-hero.png",
-        hazard: "/games/jetpack/keira-hazard.png",
-        coin: "/games/jetpack/keira-coin.png",
-        bg: "/games/jetpack/keira-bg.jpg",
+        hero: "/games/jetpack/keira-hero.png?v=2",
+        hazard: "/games/jetpack/keira-hazard.png?v=2",
+        coin: "/games/jetpack/keira-coin.png?v=2",
+        bg: "/games/jetpack/keira-bg.jpg?v=2",
       };
     case "luke":
       return {
-        hero: "/games/jetpack/luke-hero.png",
-        hazard: "/games/jetpack/luke-hazard.png",
-        coin: "/games/jetpack/luke-coin.png",
-        bg: "/games/jetpack/luke-bg.jpg",
+        hero: "/games/jetpack/luke-hero.png?v=2",
+        hazard: "/games/jetpack/luke-hazard.png?v=2",
+        coin: "/games/jetpack/luke-coin.png?v=2",
+        bg: "/games/jetpack/luke-bg.jpg?v=2",
       };
     default: {
       const _exhaustive: never = profileId;
@@ -133,10 +133,6 @@ export default function JetpackGame({
   const theme = PROFILES[profileId];
   const isKeira = profileId === "keira";
 
-  pausedRef.current = paused;
-  overRef.current = over;
-  onScoreRef.current = onScoreChange;
-
   const bumpScore = useCallback((n: number) => {
     scoreRef.current = n;
     setScore(n);
@@ -161,14 +157,19 @@ export default function JetpackGame({
   }, [bumpScore]);
 
   useEffect(() => {
-    reset();
-  }, [profileId, reset]);
+    pausedRef.current = paused;
+  }, [paused]);
+
+  useEffect(() => {
+    overRef.current = over;
+  }, [over]);
+
+  useEffect(() => {
+    onScoreRef.current = onScoreChange;
+  }, [onScoreChange]);
 
   useEffect(() => {
     let cancelled = false;
-    setArtReady(false);
-    setArtError(false);
-    artRef.current = null;
     const pack = artFor(profileId);
     Promise.all([
       loadImage(pack.hero),
@@ -179,6 +180,21 @@ export default function JetpackGame({
       .then(([hero, hazard, coin, bg]) => {
         if (cancelled) return;
         artRef.current = { hero, hazard, coin, bg };
+        y.current = H / 2;
+        vy.current = 0;
+        holding.current = false;
+        dist.current = 0;
+        obs.current = [];
+        pops.current = [];
+        sparks.current = [];
+        bgX.current = 0;
+        grace.current = GRACE_FRAMES;
+        shake.current = 0;
+        scoreRef.current = 0;
+        bumpScore(0);
+        setOver(false);
+        overRef.current = false;
+        setArtError(false);
         setArtReady(true);
       })
       .catch(() => {
@@ -187,7 +203,7 @@ export default function JetpackGame({
     return () => {
       cancelled = true;
     };
-  }, [profileId]);
+  }, [profileId, bumpScore]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -235,23 +251,13 @@ export default function JetpackGame({
         ctx.fillRect(0, 0, W, H);
       }
 
-      ctx.fillStyle = isKeira ? "rgba(244,114,182,0.55)" : "rgba(14,165,233,0.45)";
-      ctx.fillRect(0, 0, W, 28);
-      ctx.fillRect(0, H - 28, W, 28);
-      ctx.fillStyle = isKeira ? "#fb7185" : "#334155";
-      for (let i = 0; i < 10; i++) {
-        const tx = ((i * 48 - bgX.current * 1.4) % (W + 48)) - 24;
-        ctx.beginPath();
-        ctx.moveTo(tx, 0);
-        ctx.lineTo(tx + 18, 28);
-        ctx.lineTo(tx + 36, 0);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(tx, H);
-        ctx.lineTo(tx + 18, H - 28);
-        ctx.lineTo(tx + 36, H);
-        ctx.fill();
-      }
+      const rim = ctx.createLinearGradient(0, 0, 0, H);
+      rim.addColorStop(0, isKeira ? "rgba(244,114,182,0.35)" : "rgba(15,23,42,0.4)");
+      rim.addColorStop(0.08, "rgba(0,0,0,0)");
+      rim.addColorStop(0.92, "rgba(0,0,0,0)");
+      rim.addColorStop(1, isKeira ? "rgba(251,113,133,0.4)" : "rgba(15,23,42,0.45)");
+      ctx.fillStyle = rim;
+      ctx.fillRect(0, 0, W, H);
 
       for (const s of sparks.current) {
         ctx.globalAlpha = Math.max(0, s.life / 18);
@@ -330,12 +336,13 @@ export default function JetpackGame({
         if (spawnAt === 0) spawnAt = ts + FIRST_SPAWN_MS;
         if (ts >= spawnAt) {
           spawnAt = ts + SPAWN_MS;
-          const coin = Math.random() < 0.68;
+          const coin = Math.random() < 0.62;
           const kind: Kind = coin ? "coin" : "rock";
           const size = kind === "coin" ? 46 : 58;
+          const lane = CEIL + 20 + Math.random() * (FLOOR - CEIL - 40);
           obs.current.push({
             x: W + 36,
-            y: CEIL + 24 + Math.random() * (FLOOR - CEIL - 48),
+            y: lane,
             w: size,
             h: size,
             kind,
@@ -348,8 +355,7 @@ export default function JetpackGame({
         const pr = 16;
         for (const o of obs.current) {
           if (o.taken) continue;
-          const orad = o.kind === "coin" ? 20 : 16;
-          if (!hit(PLAYER_X, y.current, pr, o.x, o.y, orad)) continue;
+          if (!hit(PLAYER_X, y.current, pr, o.x, o.y, 20)) continue;
           if (o.kind === "coin") {
             o.taken = true;
             const n = scoreRef.current + 5;
