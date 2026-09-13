@@ -251,9 +251,10 @@ export default function MahjongGame({
         <img
           src={tableSrc(profileId)}
           alt=""
-          className="absolute inset-0 h-full w-full rounded-[1.35rem] object-cover"
+          className="absolute inset-0 h-full w-full rounded-[1.35rem] object-cover opacity-55"
           draggable={false}
         />
+        <div className="absolute inset-0 rounded-[1.35rem] bg-[var(--surface)]/40" />
         <div className="absolute inset-0 grid grid-cols-4 grid-rows-4 gap-[0.45rem] p-4 pt-6 pr-5 sm:p-5">
           {SLOTS.filter((slot) => slot.layer === 0).map((slot) => {
             const tile = tiles.find((t) => t.slotId === slot.id);
