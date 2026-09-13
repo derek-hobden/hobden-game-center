@@ -80,6 +80,9 @@ function drawSprite(
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+  ctx.clip();
   ctx.drawImage(img, -size / 2, -size / 2, size, size);
   ctx.restore();
   return true;
