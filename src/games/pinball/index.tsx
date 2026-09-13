@@ -13,8 +13,8 @@ const MAX_SPEED = 9.6;
 const FLIP_LINGER_MS = 320;
 const FLIP_LEN = 86;
 const FLIP_HALF = 11;
-const LEFT_PIVOT = { x: 74, y: 462 };
-const RIGHT_PIVOT = { x: 286, y: 462 };
+const LEFT_PIVOT = { x: 68, y: 468 };
+const RIGHT_PIVOT = { x: 292, y: 468 };
 const LEFT_REST = 0.38;
 const LEFT_UP = -0.58;
 const RIGHT_REST = Math.PI - 0.38;
@@ -167,9 +167,9 @@ export default function PinballGame({
   const art = artPack(profileId);
 
   function resetBall(now: number) {
-    ball.current = { x: 318, y: 430, vx: 0, vy: 0 };
+    ball.current = { x: 180, y: 118, vx: 0, vy: 0 };
     launching.current = true;
-    launchAt.current = now + 480;
+    launchAt.current = now + 420;
     drainedLock.current = false;
   }
 
@@ -373,8 +373,11 @@ export default function PinballGame({
       if (launching.current) {
         if (now >= launchAt.current) {
           launching.current = false;
-          b.vx = -1.1;
-          b.vy = -9.2;
+          b.vx = (Math.random() > 0.5 ? 1 : -1) * 1.6;
+          b.vy = 2.1;
+        } else {
+          draw();
+          return;
         }
       } else {
         b.vy += GRAVITY;
@@ -385,7 +388,7 @@ export default function PinballGame({
       }
 
       for (const wall of walls) {
-        bounceSegment(b, wall, 7, 0.72);
+        bounceSegment(b, wall, 8, 0.78);
       }
 
       if (b.x < 22) {
@@ -434,6 +437,19 @@ export default function PinballGame({
       bounceSegment(b, leftSeg, FLIP_HALF, 0.55, leftKick);
       bounceSegment(b, rightSeg, FLIP_HALF, 0.55, rightKick);
 
+      if (b.y > 488 && b.y < 522 && b.vy > 0) {
+        if (leftOn && b.x > 50 && b.x < 200) {
+          b.vy = -8.2;
+          b.vx = 2.6;
+          b.y = 486;
+        }
+        if (rightOn && b.x > 160 && b.x < 310) {
+          b.vy = -8.2;
+          b.vx = -2.6;
+          b.y = 486;
+        }
+      }
+
       pops.current = pops.current
         .map((p) => ({ ...p, y: p.y - 0.6, life: p.life - 0.018 }))
         .filter((p) => p.life > 0);
@@ -444,9 +460,10 @@ export default function PinballGame({
 
       const inDrain =
         !launching.current &&
-        b.y > 518 &&
-        b.x > 132 &&
-        b.x < 228;
+        now > launchAt.current + 700 &&
+        b.y > 528 &&
+        b.x > 138 &&
+        b.x < 222;
       if (inDrain && !drainedLock.current) {
         drainedLock.current = true;
         setBallsLeft((n) => {
@@ -475,14 +492,16 @@ export default function PinballGame({
 
   return (
     <div className="flex w-full flex-col items-center gap-3">
-      <div className="flex w-full max-w-md items-center justify-between gap-2 text-lg font-black text-[var(--ink)]">
-        <span>
-          {theme.gameNames.pinball} · {score}
-        </span>
-        <span className="rounded-full bg-white/80 px-3 py-1 text-sm" aria-live="polite">
-          Balls {"●".repeat(Math.max(0, ballsLeft))}
-          {"○".repeat(Math.max(0, 3 - ballsLeft))}
-        </span>
+      <div className="flex w-full max-w-md flex-col gap-2">
+        <div className="flex items-center justify-between gap-2 text-lg font-black text-[var(--ink)]">
+          <span>
+            {theme.gameNames.pinball} · {score}
+          </span>
+          <span className="rounded-full bg-white/80 px-3 py-1 text-sm" aria-live="polite">
+            Balls {"●".repeat(Math.max(0, ballsLeft))}
+            {"○".repeat(Math.max(0, 3 - ballsLeft))}
+          </span>
+        </div>
         {over ? (
           <button
             type="button"
