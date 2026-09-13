@@ -341,7 +341,7 @@ export default function TetrisGame({
       const bg = imagesRef.current[bgSrc(pack.prefix)];
       if (bg && bg.complete) {
         ctx.drawImage(bg, 0, 0, w, h);
-        ctx.fillStyle = "rgba(20, 12, 32, 0.28)";
+        ctx.fillStyle = "rgba(20, 12, 32, 0.38)";
         ctx.fillRect(0, 0, w, h);
       } else {
         const g = ctx.createLinearGradient(0, 0, 0, h);
@@ -475,7 +475,7 @@ export default function TetrisGame({
             {pack.nextLabel}
           </span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={nextImg} alt="" className="h-10 w-10 object-contain" />
+          <img src={nextImg} alt="" className="h-12 w-12 object-cover" />
         </div>
       </div>
       <div className="relative w-full max-w-[340px]">
