@@ -55,27 +55,6 @@ export function packFor(profileId: ProfileId): ExcitebikePack {
   }
 }
 
-export function chromaKeyImage(src: HTMLImageElement): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = src.width;
-  canvas.height = src.height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
-  ctx.drawImage(src, 0, 0);
-  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const data = image.data;
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    if (r > 170 && b > 160 && g < 110) {
-      data[i + 3] = 0;
-    }
-  }
-  ctx.putImageData(image, 0, 0);
-  return canvas;
-}
-
 export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();

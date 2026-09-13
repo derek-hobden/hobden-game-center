@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GameProps } from "@/lib/game-registry";
 import { PROFILES } from "@/lib/profiles";
-import {
-  chromaKeyImage,
-  loadImage,
-  packFor,
-  type ExcitebikePack,
-} from "./art";
+import { loadImage, packFor, type ExcitebikePack } from "./art";
 
 const W = 360;
 const H = 260;
@@ -51,7 +46,7 @@ function seedCourse(): { hills: Hill[]; pickups: Pickup[]; puddles: Puddle[] } {
   }));
   const pickups: Pickup[] = hills.map((hill) => ({
     x: hill.x,
-    y: GROUND - hill.h - 36,
+    y: GROUND - hill.h - 62,
     taken: false,
   }));
   const puddles: Puddle[] = [
@@ -163,9 +158,9 @@ export default function ExcitebikeGame({
         ]);
         if (cancelled) return;
         artRef.current = {
-          rider: chromaKeyImage(riderImg),
-          pickup: chromaKeyImage(pickupImg),
-          hill: chromaKeyImage(hillImg),
+          rider: riderImg,
+          pickup: pickupImg,
+          hill: hillImg,
           sky,
           card,
         };
@@ -210,7 +205,7 @@ export default function ExcitebikeGame({
       const artKit = artRef.current;
       for (const hill of hills.current) {
         const span = 48 + hill.h * 0.35;
-        if (artKit) {
+          if (artKit) {
           const hw = span * 2.2;
           const hh = hill.h + 36;
           ctx.drawImage(artKit.hill, hill.x - hw / 2, GROUND - hh + 8, hw, hh);
@@ -249,7 +244,7 @@ export default function ExcitebikeGame({
         if (invuln.current > 0 && Math.floor(invuln.current / 4) % 2 === 0) {
           ctx.globalAlpha = 0.45;
         }
-        ctx.drawImage(artKit.rider, -46, -78, 92, 86);
+        ctx.drawImage(artKit.rider, -52, -70, 96, 72);
         ctx.restore();
       }
 
@@ -288,7 +283,7 @@ export default function ExcitebikeGame({
         hills.current.push(next);
         pickups.current.push({
           x: next.x,
-          y: GROUND - next.h - 36,
+          y: GROUND - next.h - 62,
           taken: false,
         });
         if (Math.random() > 0.45) {
@@ -320,13 +315,14 @@ export default function ExcitebikeGame({
       for (const hill of hills.current) {
         if (!hill.hopped && hill.x < RIDER_X - 10) {
           hill.hopped = true;
-          bumpScore(1);
+          const airborne = y.current < ground - 12;
+          if (airborne) bumpScore(1);
         }
       }
 
       for (const p of pickups.current) {
         if (p.taken) continue;
-        if (Math.abs(p.x - RIDER_X) < 34 && Math.abs(p.y - (y.current - 40)) < 42) {
+        if (Math.abs(p.x - RIDER_X) < 30 && Math.abs(p.y - (y.current - 48)) < 32) {
           p.taken = true;
           bumpScore(2);
           flash(pack.pickupLabel);
