@@ -524,7 +524,11 @@ export default function PinballGame({
           type="button"
           className="h-24 flex-1 rounded-3xl bg-[var(--accent)] text-lg font-black text-[var(--accent-fg)] shadow-md active:scale-95"
           onPointerDown={(e) => {
-            e.currentTarget.setPointerCapture(e.pointerId);
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId);
+            } catch {
+              /* Playwright synthetic pointerdown has no native pointer id */
+            }
             press("left", true);
           }}
           onPointerUp={() => press("left", false)}
@@ -536,7 +540,11 @@ export default function PinballGame({
           type="button"
           className="h-24 flex-1 rounded-3xl bg-[var(--accent)] text-lg font-black text-[var(--accent-fg)] shadow-md active:scale-95"
           onPointerDown={(e) => {
-            e.currentTarget.setPointerCapture(e.pointerId);
+            try {
+              e.currentTarget.setPointerCapture(e.pointerId);
+            } catch {
+              /* Playwright synthetic pointerdown has no native pointer id */
+            }
             press("right", true);
           }}
           onPointerUp={() => press("right", false)}
