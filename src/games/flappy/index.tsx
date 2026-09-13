@@ -7,7 +7,13 @@ import { PROFILES } from "@/lib/profiles";
 type Pipe = { x: number; gapY: number; scored: boolean };
 
 const W = 360;
-const H = 480;
+const H = 520;
+const GAP = 190;
+const GRAVITY = 0.22;
+const FLAP_V = -5.2;
+const PIPE_SPEED = 1.55;
+const SPAWN_MS = 2200;
+const BIRD_X = 88;
 
 export default function FlappyGame({
   profileId,
@@ -22,6 +28,7 @@ export default function FlappyGame({
   const [score, setScore] = useState(0);
   const [over, setOver] = useState(false);
   const theme = PROFILES[profileId];
+  const isKeira = profileId === "keira";
 
   function reset() {
     birdY.current = H / 2;
@@ -39,7 +46,7 @@ export default function FlappyGame({
       return;
     }
     started.current = true;
-    vel.current = -6.2;
+    vel.current = FLAP_V;
   }
 
   useEffect(() => {
@@ -62,6 +69,7 @@ export default function FlappyGame({
 
     let raf = 0;
     let spawn = 0;
+    let firstDelay = true;
 
     const draw = () => {
       const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -70,46 +78,75 @@ export default function FlappyGame({
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
 
-      // soft ground
-      ctx.fillStyle =
-        profileId === "keira" ? "rgba(244,114,182,0.35)" : "rgba(34,197,94,0.4)";
-      ctx.fillRect(0, H - 48, W, 48);
-
-      for (const p of pipes.current) {
-        const gap = 130;
-        ctx.fillStyle =
-          profileId === "keira" ? "#86efac" : "#0ea5e9";
+      // soft clouds
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      for (const c of [
+        [40, 70],
+        [180, 110],
+        [280, 60],
+      ] as const) {
         ctx.beginPath();
-        ctx.roundRect(p.x, 0, 54, p.gapY - gap / 2, 12);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.roundRect(p.x, p.gapY + gap / 2, 54, H - (p.gapY + gap / 2) - 48, 12);
+        ctx.ellipse(c[0], c[1], 36, 18, 0, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // bird
+      ctx.fillStyle = isKeira ? "rgba(244,114,182,0.4)" : "rgba(34,197,94,0.45)";
+      ctx.fillRect(0, H - 56, W, 56);
+      ctx.fillStyle = isKeira ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.25)";
+      for (let i = 0; i < 8; i++) {
+        ctx.fillRect(i * 48 + 8, H - 40, 20, 8);
+      }
+
+      for (const p of pipes.current) {
+        ctx.fillStyle = isKeira ? "#86efac" : "#38bdf8";
+        ctx.beginPath();
+        ctx.roundRect(p.x, 0, 58, p.gapY - GAP / 2, 14);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.roundRect(
+          p.x,
+          p.gapY + GAP / 2,
+          58,
+          H - (p.gapY + GAP / 2) - 56,
+          14,
+        );
+        ctx.fill();
+        // themed caps
+        ctx.fillStyle = isKeira ? "#f9a8d4" : "#0284c7";
+        ctx.fillRect(p.x - 4, p.gapY - GAP / 2 - 14, 66, 14);
+        ctx.fillRect(p.x - 4, p.gapY + GAP / 2, 66, 14);
+      }
+
+      // bird / fairy / jet
       ctx.save();
-      ctx.translate(90, birdY.current);
-      ctx.rotate(Math.min(0.6, Math.max(-0.5, vel.current / 10)));
+      ctx.translate(BIRD_X, birdY.current);
+      ctx.rotate(Math.min(0.55, Math.max(-0.45, vel.current / 9)));
       ctx.fillStyle = theme.accent;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 18, 14, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 22, 17, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#fff";
       ctx.beginPath();
-      ctx.arc(8, -4, 4, 0, Math.PI * 2);
+      ctx.arc(10, -5, 5, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#111";
       ctx.beginPath();
-      ctx.arc(9, -4, 2, 0, Math.PI * 2);
+      ctx.arc(11, -5, 2.2, 0, Math.PI * 2);
       ctx.fill();
+      ctx.font = "18px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText(isKeira ? "🧚" : "✈️", -2, 6);
       ctx.restore();
 
       if (!started.current && !over) {
-        ctx.fillStyle = "rgba(0,0,0,0.45)";
-        ctx.font = "700 22px Fredoka, system-ui";
+        ctx.fillStyle = "rgba(0,0,0,0.4)";
+        ctx.beginPath();
+        ctx.roundRect(W / 2 - 110, H / 2 - 58, 220, 56, 16);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = "800 24px Fredoka, system-ui";
         ctx.textAlign = "center";
-        ctx.fillText("Tap to flap!", W / 2, H / 2 - 40);
+        ctx.fillText("Tap to flap!", W / 2, H / 2 - 22);
       }
     };
 
@@ -120,30 +157,34 @@ export default function FlappyGame({
         return;
       }
       if (started.current && !over) {
-        vel.current += 0.32;
+        vel.current += GRAVITY;
         birdY.current += vel.current;
 
-        if (ts - spawn > 1500) {
+        if (firstDelay) {
+          if (ts - spawn > 900) {
+            firstDelay = false;
+            spawn = ts;
+          }
+        } else if (ts - spawn > SPAWN_MS) {
           spawn = ts;
           pipes.current.push({
-            x: W + 20,
-            gapY: 120 + Math.random() * 180,
+            x: W + 24,
+            gapY: 140 + Math.random() * 180,
             scored: false,
           });
         }
 
         for (const p of pipes.current) {
-          p.x -= 2.4;
-          const gap = 130;
-          const inX = 90 + 14 > p.x && 90 - 14 < p.x + 54;
+          p.x -= PIPE_SPEED;
+          const inX = BIRD_X + 16 > p.x && BIRD_X - 16 < p.x + 58;
           const hit =
             inX &&
-            (birdY.current - 12 < p.gapY - gap / 2 ||
-              birdY.current + 12 > p.gapY + gap / 2);
-          if (hit || birdY.current > H - 56 || birdY.current < 10) {
+            (birdY.current - 14 < p.gapY - GAP / 2 ||
+              birdY.current + 14 > p.gapY + GAP / 2);
+          if (hit || birdY.current > H - 64 || birdY.current < 12) {
             setOver(true);
           }
-          if (!p.scored && p.x + 54 < 90) {
+          if (!p.scored && p.x + 58 < BIRD_X) {
             p.scored = true;
             setScore((s) => {
               const n = s + 1;
@@ -152,25 +193,25 @@ export default function FlappyGame({
             });
           }
         }
-        pipes.current = pipes.current.filter((p) => p.x > -70);
+        pipes.current = pipes.current.filter((p) => p.x > -80);
       }
       draw();
     };
 
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [paused, over, profileId, theme, onScoreChange]);
+  }, [paused, over, profileId, theme, onScoreChange, isKeira]);
 
   return (
-    <div className="flex w-full flex-col items-center gap-4">
-      <div className="flex w-full max-w-md items-center justify-between text-lg font-bold text-[var(--ink)]">
+    <div className="flex w-full flex-col items-center gap-3">
+      <div className="flex w-full max-w-md items-center justify-between text-lg font-black text-[var(--ink)]">
         <span>
           {theme.gameNames.flappy} · {score}
         </span>
         {over ? (
           <button
             type="button"
-            className="rounded-xl bg-[var(--accent)] px-4 py-2 text-[var(--accent-fg)]"
+            className="min-h-12 rounded-2xl bg-[var(--accent)] px-5 py-3 text-base font-bold text-[var(--accent-fg)] shadow-md active:scale-95"
             onClick={reset}
           >
             Play again
@@ -181,7 +222,7 @@ export default function FlappyGame({
         ref={canvasRef}
         width={W}
         height={H}
-        className="max-w-full cursor-pointer rounded-3xl border-4 border-white/70 shadow-lg touch-manipulation"
+        className="max-w-full cursor-pointer touch-manipulation rounded-3xl border-4 border-white/70 shadow-lg"
         style={{ width: "min(100%, 360px)" }}
         onPointerDown={(e) => {
           e.preventDefault();
@@ -189,12 +230,12 @@ export default function FlappyGame({
         }}
       />
       {over ? (
-        <p className="text-center text-base font-semibold text-[var(--ink)]">
-          Oof! Score {score}. Tap to retry.
+        <p className="rounded-2xl bg-white/70 px-4 py-3 text-center text-base font-bold text-[var(--ink)]">
+          Soft landing! Score {score}. Tap to try again.
         </p>
       ) : (
-        <p className="text-center text-sm text-[var(--ink)]/70">
-          Tap anywhere on the sky to flap
+        <p className="text-center text-sm font-medium text-[var(--ink)]/70">
+          Tap the sky — wide gaps, gentle flaps
         </p>
       )}
     </div>

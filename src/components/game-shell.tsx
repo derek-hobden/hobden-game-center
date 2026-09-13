@@ -79,22 +79,22 @@ export function GameShell({ gameId }: { gameId: string }) {
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-3xl flex-col gap-4 px-3 py-4 sm:px-5">
       <header className="flex items-center justify-between gap-2">
-        <Button asChild variant="secondary" size="default">
+        <Button asChild variant="secondary" size="lg">
           <Link href="/" aria-label="Back to menu">
             ← Back
           </Link>
         </Button>
-        <div className="text-center">
+        <div className="min-w-0 flex-1 text-center px-1">
           <p className="text-xs font-bold uppercase tracking-wide text-[var(--ink)]/50">
             Hobden Game Center
           </p>
-          <h1 className="text-lg font-black text-[var(--ink)] sm:text-xl">
+          <h1 className="truncate text-lg font-black text-[var(--ink)] sm:text-xl">
             {title}
           </h1>
         </div>
         <Button
           variant={paused ? "default" : "secondary"}
-          size="default"
+          size="lg"
           onClick={() => setPaused((p) => !p)}
           aria-pressed={paused}
         >
@@ -104,10 +104,15 @@ export function GameShell({ gameId }: { gameId: string }) {
 
       <div className="relative flex flex-1 flex-col items-center justify-center rounded-[2rem] border-4 border-white/50 bg-white/25 p-3 shadow-inner backdrop-blur-sm sm:p-5">
         {paused ? (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-[1.7rem] bg-[var(--ink)]/45 text-white backdrop-blur-sm">
-            <p className="text-3xl font-black">Paused</p>
-            <p className="text-sm opacity-90">Score {score}</p>
-            <Button onClick={() => setPaused(false)}>Resume</Button>
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-[1.7rem] bg-[var(--ink)]/50 text-white backdrop-blur-sm">
+            <p className="text-4xl font-black">Paused</p>
+            <p className="text-base opacity-90">Score {score}</p>
+            <Button size="xl" onClick={() => setPaused(false)}>
+              Resume
+            </Button>
+            <Button asChild variant="secondary" size="lg">
+              <Link href="/">Back to menu</Link>
+            </Button>
           </div>
         ) : null}
 
