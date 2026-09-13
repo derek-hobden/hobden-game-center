@@ -15,11 +15,11 @@ export type ExcitebikePack = {
 };
 
 const KEIRA: ExcitebikePack = {
-  rider: "/games/excitebike/keira-rider.png",
-  pickup: "/games/excitebike/keira-pickup.png",
-  hill: "/games/excitebike/keira-hill.png",
-  sky: "/games/excitebike/keira-sky.png",
-  card: "/games/excitebike/keira-card.png",
+  rider: "/games/excitebike/keira-rider.png?v=2",
+  pickup: "/games/excitebike/keira-pickup.png?v=2",
+  hill: "/games/excitebike/keira-hill.png?v=2",
+  sky: "/games/excitebike/keira-sky.png?v=2",
+  card: "/games/excitebike/keira-card.png?v=2",
   grass: "#86efac",
   dirt: "#f9a8d4",
   track: "#fb7185",
@@ -29,11 +29,11 @@ const KEIRA: ExcitebikePack = {
 };
 
 const LUKE: ExcitebikePack = {
-  rider: "/games/excitebike/luke-rider.png",
-  pickup: "/games/excitebike/luke-pickup.png",
-  hill: "/games/excitebike/luke-hill.png",
-  sky: "/games/excitebike/luke-sky.png",
-  card: "/games/excitebike/luke-card.png",
+  rider: "/games/excitebike/luke-rider.png?v=2",
+  pickup: "/games/excitebike/luke-pickup.png?v=2",
+  hill: "/games/excitebike/luke-hill.png?v=2",
+  sky: "/games/excitebike/luke-sky.png?v=2",
+  card: "/games/excitebike/luke-card.png?v=2",
   grass: "#a3e635",
   dirt: "#a16207",
   track: "#78716c",
