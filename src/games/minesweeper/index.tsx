@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { GameProps } from "@/lib/game-registry";
-import { PROFILES } from "@/lib/profiles";
 import { cn } from "@/lib/utils";
 import { adjTone, minesweeperArt } from "./art";
 
@@ -88,20 +87,23 @@ export default function MinesweeperGame({
   paused,
   onScoreChange,
 }: GameProps) {
-  const [board, setBoard] = useState<Cell[][]>(() => buildBoard());
+  const [board, setBoard] = useState<Cell[][] | null>(null);
   const [status, setStatus] = useState<Status>("playing");
   const [flagMode, setFlagMode] = useState(false);
   const [started, setStarted] = useState(false);
   const [pop, setPop] = useState<string | null>(null);
-  const theme = PROFILES[profileId];
   const art = minesweeperArt(profileId);
 
+  useEffect(() => {
+    setBoard(buildBoard());
+  }, []);
+
   const flags = useMemo(
-    () => board.flat().filter((c) => c.flagged).length,
+    () => board?.flat().filter((c) => c.flagged).length ?? 0,
     [board],
   );
   const opened = useMemo(
-    () => board.flat().filter((c) => c.open && !c.mine).length,
+    () => board?.flat().filter((c) => c.open && !c.mine).length ?? 0,
     [board],
   );
 
@@ -142,6 +144,7 @@ export default function MinesweeperGame({
   const openCell = (r: number, c: number) => {
     if (paused || status !== "playing") return;
     setBoard((prev) => {
+      if (!prev) return prev;
       let working = prev;
       if (!started) {
         working = buildBoard(r, c);
@@ -170,6 +173,7 @@ export default function MinesweeperGame({
   const toggleFlag = (r: number, c: number) => {
     if (paused || status !== "playing") return;
     setBoard((prev) => {
+      if (!prev) return prev;
       const next = clone(prev);
       const cell = next[r][c];
       if (cell.open) return prev;
@@ -186,6 +190,14 @@ export default function MinesweeperGame({
 
   const banner = statusCopy(status, art.win, art.lose);
 
+  if (!board) {
+    return (
+      <p className="animate-pulse text-lg font-semibold text-[var(--ink)]">
+        Loading map…
+      </p>
+    );
+  }
+
   return (
     <div className="relative flex w-full flex-col items-center gap-3">
       <div
@@ -199,21 +211,16 @@ export default function MinesweeperGame({
         />
       </div>
 
-      <div className="flex w-full max-w-md items-center gap-3 rounded-3xl bg-white/80 px-3 py-2 shadow-sm backdrop-blur-sm">
+      <div className="flex w-full max-w-md items-center gap-2 rounded-3xl bg-white/80 px-2 py-2 shadow-sm backdrop-blur-sm">
         <img
           src={art.card}
           alt=""
-          className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-md"
+          className="h-14 w-14 shrink-0 rounded-2xl object-cover shadow-md"
         />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-black text-[var(--ink)]">
-            {theme.gameNames.minesweeper}
-          </p>
-          <p className="flex items-center gap-1 text-sm font-bold text-[var(--ink)]/75">
-            <img src={art.flag} alt="" className="h-6 w-6 object-contain" />
-            {flags}/{MINES} {art.counterWord}
-          </p>
-        </div>
+        <p className="flex min-w-0 flex-1 items-center gap-1 text-base font-black text-[var(--ink)]">
+          <img src={art.flag} alt="" className="h-7 w-7 object-contain" />
+          {flags}/{MINES} {art.counterWord}
+        </p>
         <button
           type="button"
           className="min-h-12 shrink-0 rounded-2xl bg-[var(--accent)] px-3 py-3 text-sm font-bold text-[var(--accent-fg)] shadow-md active:scale-95"
