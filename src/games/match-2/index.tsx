@@ -1,18 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameProps } from "@/lib/game-registry";
 import { PROFILES } from "@/lib/profiles";
 import { cn } from "@/lib/utils";
+import { match2Art, type PairId } from "./art";
 
 type Card = {
-  id: number;
-  emoji: string;
+  uid: number;
+  pairId: PairId;
+  src: string;
+  label: string;
   matched: boolean;
 };
 
-const KEIRA_EMOJIS = ["🦄", "🌈", "🧚", "🐘", "🧜", "👑"];
-const LUKE_EMOJIS = ["🚀", "🦖", "🚗", "⚽", "🐠", "🤖"];
+const PAIR_COUNT = 6;
+const HINTS_PER_GAME = 2;
+const MATCH_HOLD_MS = 480;
+const MISS_HOLD_MS = 980;
+const PEEK_HOLD_MS = 1300;
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -23,12 +29,23 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function buildDeck(isKeira: boolean, pairs: number): Card[] {
-  const pool = isKeira ? KEIRA_EMOJIS : LUKE_EMOJIS;
-  const picks = pool.slice(0, pairs);
-  const cards = picks.flatMap((emoji, i) => [
-    { id: i * 2, emoji, matched: false },
-    { id: i * 2 + 1, emoji, matched: false },
+function buildDeck(art: ReturnType<typeof match2Art>): Card[] {
+  const picks = art.pairs.slice(0, PAIR_COUNT);
+  const cards = picks.flatMap((pair, i) => [
+    {
+      uid: i * 2,
+      pairId: pair.id,
+      src: pair.src,
+      label: pair.label,
+      matched: false,
+    },
+    {
+      uid: i * 2 + 1,
+      pairId: pair.id,
+      src: pair.src,
+      label: pair.label,
+      matched: false,
+    },
   ]);
   return shuffle(cards);
 }
@@ -39,14 +56,26 @@ export default function Match2Game({
   onScoreChange,
 }: GameProps) {
   const theme = PROFILES[profileId];
-  const isKeira = profileId === "keira";
-  const pairs = 6;
-  const [cards, setCards] = useState<Card[]>(() => buildDeck(isKeira, pairs));
+  const art = match2Art(profileId);
+  const [cards, setCards] = useState<Card[]>(() => buildDeck(art));
   const [flipped, setFlipped] = useState<number[]>([]);
   const [lock, setLock] = useState(false);
   const [moves, setMoves] = useState(0);
+  const [hintsLeft, setHintsLeft] = useState(HINTS_PER_GAME);
   const [matchPop, setMatchPop] = useState<string | null>(null);
+  const [missPop, setMissPop] = useState(false);
   const [won, setWon] = useState(false);
+  const timers = useRef<number[]>([]);
+
+  const clearTimers = () => {
+    timers.current.forEach((id) => window.clearTimeout(id));
+    timers.current = [];
+  };
+
+  const later = (fn: () => void, ms: number) => {
+    const id = window.setTimeout(fn, ms);
+    timers.current.push(id);
+  };
 
   const matchedCount = useMemo(
     () => cards.filter((c) => c.matched).length / 2,
@@ -57,23 +86,29 @@ export default function Match2Game({
     onScoreChange?.(matchedCount);
   }, [matchedCount, onScoreChange]);
 
-  // Rebuild themed deck when profile changes
   useEffect(() => {
-    setCards(buildDeck(isKeira, pairs));
+    clearTimers();
+    setCards(buildDeck(art));
     setFlipped([]);
     setLock(false);
     setMoves(0);
+    setHintsLeft(HINTS_PER_GAME);
     setMatchPop(null);
+    setMissPop(false);
     setWon(false);
     onScoreChange?.(0);
-  }, [isKeira, onScoreChange]);
+    return clearTimers;
+  }, [profileId, art]);
 
   const reset = () => {
-    setCards(buildDeck(isKeira, pairs));
+    clearTimers();
+    setCards(buildDeck(art));
     setFlipped([]);
     setLock(false);
     setMoves(0);
+    setHintsLeft(HINTS_PER_GAME);
     setMatchPop(null);
+    setMissPop(false);
     setWon(false);
     onScoreChange?.(0);
   };
@@ -86,95 +121,168 @@ export default function Match2Game({
 
     const nextFlipped = [...flipped, index];
     setFlipped(nextFlipped);
+    setMissPop(false);
 
     if (nextFlipped.length < 2) return;
 
     setLock(true);
     setMoves((m) => m + 1);
     const [a, b] = nextFlipped;
-    const match = cards[a].emoji === cards[b].emoji;
+    const match = cards[a].pairId === cards[b].pairId;
 
-    window.setTimeout(() => {
+    later(() => {
       if (match) {
         setCards((prev) => {
           const copy = prev.map((c, i) =>
             i === a || i === b ? { ...c, matched: true } : c,
           );
-          const done = copy.every((c) => c.matched);
-          if (done) setWon(true);
+          if (copy.every((c) => c.matched)) setWon(true);
           return copy;
         });
-        setMatchPop(cards[a].emoji);
-        window.setTimeout(() => setMatchPop(null), 700);
+        setMatchPop(cards[a].label);
+        later(() => setMatchPop(null), 900);
+      } else {
+        setMissPop(true);
+        later(() => setMissPop(false), 700);
       }
       setFlipped([]);
       setLock(false);
-    }, match ? 420 : 700);
+    }, match ? MATCH_HOLD_MS : MISS_HOLD_MS);
   };
 
+  const onHint = () => {
+    if (paused || lock || won || hintsLeft <= 0) return;
+    const unmatched = cards
+      .map((card, index) => ({ card, index }))
+      .filter(({ card }) => !card.matched);
+    if (unmatched.length < 2) return;
+
+    const first = unmatched[0];
+    const partner = unmatched.find(
+      (entry) =>
+        entry.index !== first.index && entry.card.pairId === first.card.pairId,
+    );
+    if (!partner) return;
+
+    setLock(true);
+    setHintsLeft((h) => h - 1);
+    setFlipped([first.index, partner.index]);
+    setMissPop(false);
+    later(() => {
+      setFlipped([]);
+      setLock(false);
+    }, PEEK_HOLD_MS);
+  };
+
+  const statusLine = matchPop
+    ? `${art.matchYay} ${matchPop}`
+    : missPop
+      ? art.missCopy
+      : art.flipHint;
+
   return (
-    <div className="flex w-full flex-col items-center gap-3">
-      <div className="flex w-full max-w-md flex-wrap items-center justify-between gap-2 text-lg font-black text-[var(--ink)]">
-        <span>
-          {theme.gameNames["match-2"] ?? "Match 2"} · {matchedCount}/{pairs}
-        </span>
-        <span className="rounded-full bg-white/70 px-3 py-1 text-sm font-bold">
-          Moves {moves}
-        </span>
+    <div className="relative flex w-full flex-col items-center gap-3">
+      <div
+        className="absolute inset-0 -z-10 overflow-hidden rounded-[1.75rem] opacity-80"
+        aria-hidden
+      >
+        <img src={art.bg} alt="" className="h-full w-full object-cover" />
+      </div>
+
+      <div className="flex w-full max-w-md items-center gap-3 rounded-3xl bg-white/85 px-3 py-2 shadow-sm backdrop-blur-sm">
+        <img
+          src={art.card}
+          alt=""
+          className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-md"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-lg font-black text-[var(--ink)]">
+            {theme.gameNames["match-2"] ?? "Match 2"}
+          </p>
+          <p className="text-sm font-bold text-[var(--ink)]/75">
+            {matchedCount}/{PAIR_COUNT} pairs · Moves {moves}
+          </p>
+        </div>
         <button
           type="button"
-          className="min-h-12 rounded-2xl bg-[var(--accent)] px-4 py-3 text-base font-bold text-[var(--accent-fg)] shadow-md active:scale-95"
+          className="min-h-12 shrink-0 rounded-2xl bg-[var(--accent)] px-3 py-3 text-sm font-bold text-[var(--accent-fg)] shadow-md active:scale-95"
           onClick={reset}
         >
           New game
         </button>
       </div>
 
-      {matchPop ? (
-        <p className="animate-bounce text-2xl font-black text-[var(--ink)]">
-          Match! {matchPop}
-        </p>
-      ) : (
-        <p className="text-sm font-medium text-[var(--ink)]/70">
-          Flip two cards. Find the pairs!
-        </p>
-      )}
+      <button
+        type="button"
+        disabled={paused || won || hintsLeft <= 0 || lock}
+        className={cn(
+          "flex min-h-14 w-full max-w-md items-center justify-center rounded-2xl border-4 px-3 py-2 text-base font-black shadow-sm active:scale-[0.99] disabled:opacity-50",
+          hintsLeft > 0
+            ? "border-amber-300 bg-amber-100 text-amber-950"
+            : "border-white/70 bg-white/80 text-[var(--ink)]",
+        )}
+        onClick={onHint}
+      >
+        {art.hintLabel} · {hintsLeft} left
+      </button>
 
-      <div className="grid w-full max-w-md grid-cols-3 gap-3 sm:grid-cols-4">
+      <p
+        className={cn(
+          "min-h-10 px-2 text-center text-base font-black text-[var(--ink)]",
+          matchPop && "animate-bounce",
+        )}
+      >
+        {statusLine}
+      </p>
+
+      <div className="grid w-full max-w-md grid-cols-3 gap-2.5 rounded-3xl border-4 border-white/70 bg-white/40 p-2 shadow-lg backdrop-blur-[2px] sm:gap-3 sm:p-3">
         {cards.map((card, index) => {
-          const faceUp =
-            card.matched || flipped.includes(index);
+          const faceUp = card.matched || flipped.includes(index);
           return (
             <button
-              key={`${card.id}-${index}`}
+              key={card.uid}
               type="button"
               disabled={paused || card.matched}
-              aria-label={faceUp ? `Card ${card.emoji}` : "Hidden card"}
+              aria-label={faceUp ? card.label : "Hidden card"}
               className={cn(
-                "flex aspect-square min-h-[88px] items-center justify-center rounded-3xl border-4 text-4xl shadow-md transition duration-200 touch-manipulation active:scale-95 sm:min-h-[96px] sm:text-5xl",
-                faceUp
-                  ? card.matched
-                    ? isKeira
-                      ? "border-pink-200 bg-pink-100"
-                      : "border-sky-200 bg-sky-100"
-                    : "border-white bg-white"
-                  : isKeira
-                    ? "border-pink-300/80 bg-gradient-to-br from-pink-400 to-violet-400"
-                    : "border-sky-300/80 bg-gradient-to-br from-sky-500 to-emerald-400",
+                "relative aspect-square min-h-[96px] overflow-hidden rounded-3xl border-4 shadow-md transition duration-200 touch-manipulation [perspective:700px] active:scale-95 sm:min-h-[108px]",
+                card.matched
+                  ? "border-emerald-300"
+                  : faceUp
+                    ? "border-white"
+                    : "border-white/80",
               )}
               onClick={() => onFlip(index)}
             >
-              {faceUp ? card.emoji : isKeira ? "✨" : "❓"}
+              <span
+                className={cn(
+                  "relative block h-full w-full [transform-style:preserve-3d] transition-transform duration-300",
+                  faceUp && "[transform:rotateY(180deg)]",
+                )}
+              >
+                <span className="absolute inset-0 [backface-visibility:hidden]">
+                  <img
+                    src={art.back}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                </span>
+                <span className="absolute inset-0 [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                  <img
+                    src={card.src}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                </span>
+              </span>
             </button>
           );
         })}
       </div>
 
       {won ? (
-        <div className="w-full max-w-md rounded-3xl bg-emerald-200 px-4 py-5 text-center shadow-md">
-          <p className="text-2xl font-black text-emerald-950">
-            You matched them all! 🎉
-          </p>
+        <div className="w-full max-w-md rounded-3xl bg-emerald-200/95 px-4 py-5 text-center shadow-md">
+          <p className="text-2xl font-black text-emerald-950">{art.win}</p>
           <p className="mt-1 text-base font-semibold text-emerald-900">
             {moves} moves · tap New game to play again
           </p>
