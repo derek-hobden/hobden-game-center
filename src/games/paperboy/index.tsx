@@ -15,15 +15,15 @@ type Paper = { x: number; y: number; vx: number; vy: number };
 type Pop = { x: number; y: number; life: number };
 
 const W = 360;
-const H = 520;
+const H = 460;
 const RIDER_X = 52;
 const HOUSE_X = 198;
 const MAILBOX_X = 188;
 const HOUSE_COUNT = 8;
-const SCROLL_SPEED = 1.05;
-const HIT_X = 42;
-const HIT_Y = 48;
-const ROUTE_END = 1680;
+const SCROLL_SPEED = 0.7;
+const HIT_X = 52;
+const HIT_Y = 58;
+const ROUTE_END = 2100;
 
 function copyFor(profileId: ProfileId) {
   switch (profileId) {
@@ -60,14 +60,14 @@ function copyFor(profileId: ProfileId) {
 
 function buildHouses(): House[] {
   return Array.from({ length: HOUSE_COUNT }, (_, i) => ({
-    worldY: 220 + i * 180,
+    worldY: 250 + i * 220,
     hit: false,
     missed: false,
   }));
 }
 
 function buildHazards(): Hazard[] {
-  return [310, 640, 980, 1320].map((worldY) => ({ worldY, bumped: false }));
+  return [400, 720, 1180, 1600].map((worldY) => ({ worldY, bumped: false }));
 }
 
 export default function PaperboyGame({
@@ -84,6 +84,8 @@ export default function PaperboyGame({
   const pops = useRef<Pop[]>([]);
   const steer = useRef(0);
   const wobble = useRef(0);
+  const warmup = useRef(75);
+  const scoreRef = useRef(0);
   const sprites = useRef<PaperboySprites | null>(null);
   const [artReady, setArtReady] = useState(false);
   const [artError, setArtError] = useState(false);
@@ -93,6 +95,17 @@ export default function PaperboyGame({
   const toastTimer = useRef<number>(0);
   const theme = PROFILES[profileId];
   const copy = copyFor(profileId);
+  const pausedRef = useRef(paused);
+  const overRef = useRef(over);
+  const copyRef = useRef(copy);
+  const onScoreRef = useRef(onScoreChange);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+    overRef.current = over;
+    copyRef.current = copy;
+    onScoreRef.current = onScoreChange;
+  }, [paused, over, copy, onScoreChange]);
 
   const flash = useCallback((msg: string) => {
     setToast(msg);
@@ -108,20 +121,22 @@ export default function PaperboyGame({
     papers.current = [];
     pops.current = [];
     wobble.current = 0;
+    warmup.current = 75;
+    scoreRef.current = 0;
     setScore(0);
-    onScoreChange?.(0);
+    onScoreRef.current?.(0);
     setOver(false);
     setToast(null);
-  }, [onScoreChange]);
+  }, []);
 
   useEffect(() => {
+    // Fresh route when Keira/Luke switches.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- profile change remounts the route
     reset();
   }, [profileId, reset]);
 
   useEffect(() => {
     let cancelled = false;
-    setArtReady(false);
-    setArtError(false);
     sprites.current = null;
     loadPaperboySprites(profileId)
       .then((loaded) => {
@@ -140,12 +155,28 @@ export default function PaperboyGame({
   const throwPaper = useCallback(() => {
     if (paused || over) return;
     if (papers.current.length >= 3) return;
-    papers.current.push({
-      x: RIDER_X + 70,
-      y: riderY.current + 28,
-      vx: 7.2,
-      vy: 0,
-    });
+    const startX = RIDER_X + 70;
+    const startY = riderY.current + 28;
+    const vx = 6.4;
+    let vy = 0;
+    let best: House | null = null;
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (const h of houses.current) {
+      if (h.hit || h.missed) continue;
+      const hy = h.worldY - scroll.current;
+      if (hy < 24 || hy > H - 24) continue;
+      const dist = Math.abs(hy - startY) + hy * 0.15;
+      if (dist < bestScore) {
+        bestScore = dist;
+        best = h;
+      }
+    }
+    if (best) {
+      const hy = best.worldY - scroll.current;
+      const frames = Math.max(8, (MAILBOX_X - startX) / vx);
+      vy = (hy - startY) / frames;
+    }
+    papers.current.push({ x: startX, y: startY, vx, vy });
   }, [paused, over]);
 
   useEffect(() => {
@@ -233,33 +264,21 @@ export default function PaperboyGame({
 
     const loop = () => {
       raf = requestAnimationFrame(loop);
-      if (paused) {
+      if (pausedRef.current) {
         draw();
         return;
       }
-      if (!over) {
-        scroll.current += SCROLL_SPEED;
+      if (!overRef.current) {
+        if (warmup.current > 0) {
+          warmup.current -= 1;
+        } else {
+          scroll.current += SCROLL_SPEED;
+        }
         riderY.current += steer.current * 4.2;
         riderY.current = Math.max(36, Math.min(H - 110, riderY.current));
         if (wobble.current > 0) wobble.current -= 0.02;
 
         for (const p of papers.current) {
-          let nearest: House | null = null;
-          let best = 999;
-          for (const h of houses.current) {
-            if (h.hit || h.missed) continue;
-            const hy = screenY(h.worldY);
-            const d = Math.abs(p.y - hy);
-            if (d < best) {
-              best = d;
-              nearest = h;
-            }
-          }
-          if (nearest && best < 56) {
-            const hy = screenY(nearest.worldY);
-            p.vy += Math.sign(hy - p.y) * 0.35;
-          }
-          p.vy *= 0.92;
           p.x += p.vx;
           p.y += p.vy;
         }
@@ -272,12 +291,10 @@ export default function PaperboyGame({
               h.hit = true;
               p.x = 999;
               pops.current.push({ x: MAILBOX_X, y: hy, life: 1 });
-              setScore((s) => {
-                const n = s + 1;
-                onScoreChange?.(n);
-                return n;
-              });
-              flash(copy.hit);
+              scoreRef.current += 1;
+              setScore(scoreRef.current);
+              onScoreRef.current?.(scoreRef.current);
+              flash(copyRef.current.hit);
             }
           }
         }
@@ -285,7 +302,7 @@ export default function PaperboyGame({
 
         for (const h of houses.current) {
           if (h.hit || h.missed) continue;
-          if (screenY(h.worldY) < -20) h.missed = true;
+          if (screenY(h.worldY) < -70) h.missed = true;
         }
 
         const riderMid = riderY.current + 40;
@@ -295,7 +312,7 @@ export default function PaperboyGame({
           if (Math.abs(y - riderMid) < 28) {
             z.bumped = true;
             wobble.current = 1;
-            flash(copy.bump);
+            flash(copyRef.current.bump);
           }
         }
 
@@ -310,7 +327,7 @@ export default function PaperboyGame({
 
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [paused, over, theme, copy, flash, onScoreChange, artReady]);
+  }, [profileId, flash, artReady, theme]);
 
   const holdSteer = (dir: number) => {
     steer.current = dir;
