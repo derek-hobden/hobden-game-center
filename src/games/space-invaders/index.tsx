@@ -19,7 +19,7 @@ const H = 480;
 const PLAYER_Y = H - 58;
 const INV_SIZE = 52;
 const SHIP_SIZE = 72;
-const HIT_R = 30;
+const HIT_R = 38;
 const COLS = 5;
 const ROWS = 3;
 
@@ -108,6 +108,7 @@ export default function SpaceInvadersGame({
   const lastShot = useRef(0);
   const holdDir = useRef(0);
   const autoFire = useRef(true);
+  const scoreRef = useRef(0);
   const images = useRef<Map<string, HTMLImageElement>>(new Map());
   const [score, setScore] = useState(0);
   const [over, setOver] = useState(false);
@@ -138,6 +139,7 @@ export default function SpaceInvadersGame({
     }
     dir.current = 1;
     lastShot.current = 0;
+    scoreRef.current = 0;
     setScore(0);
     onScoreChange?.(0);
     setOver(false);
@@ -262,6 +264,7 @@ export default function SpaceInvadersGame({
         bullets.current = bullets.current
           .map((b) => ({ ...b, y: b.y - 9 }))
           .filter((b) => b.y > -12);
+        let hits = 0;
         for (const b of bullets.current) {
           for (const inv of invaders.current) {
             if (!inv.alive) continue;
@@ -269,14 +272,16 @@ export default function SpaceInvadersGame({
               inv.alive = false;
               b.y = -99;
               pops.current.push({ x: inv.x, y: inv.y, life: 18, hue: pack.shot });
-              setScore((s) => {
-                const n = s + 1;
-                onScoreChange?.(n);
-                return n;
-              });
-              setPopText("Yay! +1");
+              hits += 1;
             }
           }
+        }
+        if (hits > 0) {
+          scoreRef.current += hits;
+          const n = scoreRef.current;
+          setScore(n);
+          onScoreChange?.(n);
+          setPopText("Yay! +1");
         }
         bullets.current = bullets.current.filter((b) => b.y > 0);
         pops.current = pops.current
