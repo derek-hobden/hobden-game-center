@@ -28,6 +28,10 @@
 html,
 body {
   min-height: 100%;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -37,6 +41,27 @@ body {
     var(--pattern),
     linear-gradient(165deg, var(--sky-from), var(--sky-to) 55%, #fff8ef);
   background-attachment: fixed;
+  touch-action: manipulation;
+}
+
+img,
+canvas,
+svg,
+video {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+
+button,
+[role="button"],
+a {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .brand-mark {
