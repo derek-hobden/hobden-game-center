@@ -7,8 +7,8 @@ function block(event: Event) {
 }
 
 /**
- * Suppress iOS long-press callout / text selection / drag on a game-controls
- * subtree. Does not listen for gesturestart, so pinch-zoom stays available.
+ * Suppress iOS long-press callout / text selection / drag, and pinch-zoom,
+ * on a game-controls subtree. Do not mount this on menu/picker screens.
  */
 export function SuppressIosCallout({
   children,
@@ -26,11 +26,14 @@ export function SuppressIosCallout({
     root.addEventListener("contextmenu", block);
     root.addEventListener("selectstart", block);
     root.addEventListener("dragstart", block);
+    // Capture so two-finger pinches on the canvas never zoom the page.
+    root.addEventListener("gesturestart", block, true);
 
     return () => {
       root.removeEventListener("contextmenu", block);
       root.removeEventListener("selectstart", block);
       root.removeEventListener("dragstart", block);
+      root.removeEventListener("gesturestart", block, true);
     };
   }, []);
 

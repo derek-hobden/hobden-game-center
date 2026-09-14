@@ -13,30 +13,18 @@ import { getGame, type GameProps } from "@/lib/game-registry";
 import { useProfile } from "@/context/profile-context";
 import { Button } from "@/components/ui/button";
 import { BrandLoading } from "@/components/brand-loading";
+import { GameErrorBoundary } from "@/components/game-error-boundary";
 import { SuppressIosCallout } from "@/components/suppress-ios-callout";
 
 function LazyGame({
   load,
-  onLoadError,
   profileId,
   paused,
   onScoreChange,
 }: GameProps & {
   load: () => Promise<{ default: ComponentType<GameProps> }>;
-  onLoadError: () => void;
 }) {
-  const [Game] = useState(() =>
-    lazy(async () => {
-      try {
-        return await load();
-      } catch {
-        onLoadError();
-        return {
-          default: (() => null) as ComponentType<GameProps>,
-        };
-      }
-    }),
-  );
+  const [Game] = useState(() => lazy(load));
 
   return (
     <Game
@@ -47,13 +35,26 @@ function LazyGame({
   );
 }
 
+function GameCrashRecovery({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 text-center">
+      <p className="text-center font-semibold text-rose-700">
+        Could not load this game.
+      </p>
+      <Button onClick={onRetry}>Try again</Button>
+      <Button asChild variant="secondary">
+        <Link href="/">Back to menu</Link>
+      </Button>
+    </div>
+  );
+}
+
 export function GameShell({ gameId }: { gameId: string }) {
   const router = useRouter();
   const { profile, profileId, ready } = useProfile();
   const meta = getGame(gameId);
   const [paused, setPaused] = useState(false);
   const [score, setScore] = useState(0);
-  const [error, setError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
@@ -141,22 +142,14 @@ export function GameShell({ gameId }: { gameId: string }) {
           </div>
         ) : null}
 
-        {error ? (
-          <div className="flex flex-col items-center gap-3 text-center">
-            <p className="text-center font-semibold text-rose-700">{error}</p>
-            <Button
-              onClick={() => {
-                setError(null);
-                setLoadAttempt((n) => n + 1);
-              }}
-            >
-              Try again
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href="/">Back to menu</Link>
-            </Button>
-          </div>
-        ) : (
+        <GameErrorBoundary
+          key={`${gameId}-${loadAttempt}`}
+          fallback={
+            <GameCrashRecovery
+              onRetry={() => setLoadAttempt((n) => n + 1)}
+            />
+          }
+        >
           <Suspense
             fallback={
               <div className="flex flex-col items-center gap-3 py-10">
@@ -173,15 +166,13 @@ export function GameShell({ gameId }: { gameId: string }) {
             }
           >
             <LazyGame
-              key={`${gameId}-${loadAttempt}`}
               load={load}
-              onLoadError={() => setError("Could not load this game.")}
               profileId={profileId}
               paused={paused}
               onScoreChange={setScore}
             />
           </Suspense>
-        )}
+        </GameErrorBoundary>
       </SuppressIosCallout>
 
       <p className="pb-2 text-center text-base font-semibold text-[var(--ink)]/80">
