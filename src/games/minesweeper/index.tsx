@@ -4,64 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { GameProps } from "@/lib/game-registry";
 import { cn } from "@/lib/utils";
 import { adjTone, minesweeperArt } from "./art";
-
-type Cell = {
-  mine: boolean;
-  open: boolean;
-  flagged: boolean;
-  adj: number;
-};
+import {
+  buildBoard,
+  COLS,
+  type Cell,
+  MINES,
+  prepareOpen,
+  ROWS,
+} from "./board";
 
 type Status = "playing" | "won" | "lost";
-
-const ROWS = 6;
-const COLS = 6;
-const MINES = 4;
-
-function buildBoard(safeR?: number, safeC?: number): Cell[][] {
-  const board: Cell[][] = Array.from({ length: ROWS }, () =>
-    Array.from({ length: COLS }, () => ({
-      mine: false,
-      open: false,
-      flagged: false,
-      adj: 0,
-    })),
-  );
-
-  let placed = 0;
-  while (placed < MINES) {
-    const r = Math.floor(Math.random() * ROWS);
-    const c = Math.floor(Math.random() * COLS);
-    if (board[r][c].mine) continue;
-    if (
-      safeR != null &&
-      safeC != null &&
-      Math.abs(r - safeR) <= 1 &&
-      Math.abs(c - safeC) <= 1
-    ) {
-      continue;
-    }
-    board[r][c].mine = true;
-    placed += 1;
-  }
-
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      if (board[r][c].mine) continue;
-      let n = 0;
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          const rr = r + dr;
-          const cc = c + dc;
-          if (rr < 0 || cc < 0 || rr >= ROWS || cc >= COLS) continue;
-          if (board[rr][cc].mine) n += 1;
-        }
-      }
-      board[r][c].adj = n;
-    }
-  }
-  return board;
-}
 
 function clone(board: Cell[][]) {
   return board.map((row) => row.map((cell) => ({ ...cell })));
@@ -143,15 +95,14 @@ export default function MinesweeperGame({
 
   const openCell = (r: number, c: number) => {
     if (paused || status !== "playing") return;
+    let markStarted = false;
     setBoard((prev) => {
       if (!prev) return prev;
-      let working = prev;
-      if (!started) {
-        working = buildBoard(r, c);
-        setStarted(true);
-      }
+      const prep = prepareOpen(prev, r, c, started);
+      if (!prep) return prev;
+      markStarted = prep.markStarted;
+      const { working } = prep;
       const cell = working[r][c];
-      if (cell.open || cell.flagged) return working === prev ? prev : working;
       if (cell.mine) {
         const lost = clone(working);
         lost.forEach((row) =>
@@ -167,6 +118,7 @@ export default function MinesweeperGame({
       if (safeLeft === 0) setStatus("won");
       return next;
     });
+    if (markStarted) setStarted(true);
     setPop(`${r}-${c}`);
   };
 
