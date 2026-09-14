@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent,
@@ -22,7 +23,8 @@ import {
 
 const COLS = 10;
 const ROWS = 14;
-const CELL = 34;
+const MIN_CELL = 22;
+const MAX_CELL = 52;
 const GRAVITY_MS = 920;
 const HOLD_REPEAT_MS = 140;
 
@@ -134,6 +136,10 @@ export default function TetrisGame({
   onScoreChange,
 }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const hudRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef(emptyBoard());
   const pieceRef = useRef<Piece | null>(null);
   const nextRef = useRef<PieceKind>("t");
@@ -148,6 +154,7 @@ export default function TetrisGame({
   const [yay, setYay] = useState<string | null>(null);
   const [nextKind, setNextKind] = useState<PieceKind>("t");
   const [artTick, setArtTick] = useState(0);
+  const [cellPx, setCellPx] = useState(34);
 
   const theme = PROFILES[profileId];
   const pack = tetrisPack(profileId);
@@ -181,6 +188,39 @@ export default function TetrisGame({
   useEffect(() => {
     reset();
   }, [reset, profileId]);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const fitCell = (width: number, height: number) => {
+      if (width < 1 || height < 1) return MIN_CELL;
+      const byW = Math.floor(width / COLS);
+      const byH = Math.floor(height / ROWS);
+      return Math.max(MIN_CELL, Math.min(MAX_CELL, byW, byH));
+    };
+
+    const apply = () => {
+      const hud = hudRef.current?.offsetHeight ?? 0;
+      const controls = controlsRef.current?.offsetHeight ?? 0;
+      const gap = 8;
+      const gaps = hud && controls ? gap * 2 : gap;
+      const width = root.clientWidth;
+      const height = root.clientHeight - hud - controls - gaps;
+      setCellPx((prev) => {
+        const next = fitCell(width, height);
+        return prev === next ? prev : next;
+      });
+    };
+
+    apply();
+
+    const ro = new ResizeObserver(() => apply());
+    ro.observe(root);
+    if (hudRef.current) ro.observe(hudRef.current);
+    if (controlsRef.current) ro.observe(controlsRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const urls = [
@@ -329,8 +369,9 @@ export default function TetrisGame({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = COLS * CELL;
-    const h = ROWS * CELL;
+    const cellSize = cellPx;
+    const w = COLS * cellSize;
+    const h = ROWS * cellSize;
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -354,14 +395,14 @@ export default function TetrisGame({
       ctx.lineWidth = 1;
       for (let r = 0; r <= ROWS; r++) {
         ctx.beginPath();
-        ctx.moveTo(0, r * CELL);
-        ctx.lineTo(w, r * CELL);
+        ctx.moveTo(0, r * cellSize);
+        ctx.lineTo(w, r * cellSize);
         ctx.stroke();
       }
       for (let c = 0; c <= COLS; c++) {
         ctx.beginPath();
-        ctx.moveTo(c * CELL, 0);
-        ctx.lineTo(c * CELL, h);
+        ctx.moveTo(c * cellSize, 0);
+        ctx.lineTo(c * cellSize, h);
         ctx.stroke();
       }
 
@@ -374,7 +415,15 @@ export default function TetrisGame({
           if (!cell) continue;
           const img = imagesRef.current[blockSrc(pack.prefix, cell)];
           const alpha = flashing.includes(r) && flashOn ? 0.35 : 1;
-          drawSprite(ctx, img, c * CELL, r * CELL, CELL, kindFill(cell, isKeira), alpha);
+          drawSprite(
+            ctx,
+            img,
+            c * cellSize,
+            r * cellSize,
+            cellSize,
+            kindFill(cell, isKeira),
+            alpha,
+          );
         }
       }
 
@@ -386,9 +435,9 @@ export default function TetrisGame({
             if (!p.shape[r][c]) continue;
             drawRounded(
               ctx,
-              (p.x + c) * CELL,
-              (gy + r) * CELL,
-              CELL,
+              (p.x + c) * cellSize,
+              (gy + r) * cellSize,
+              cellSize,
               pack.ghost,
               0.55,
             );
@@ -401,9 +450,9 @@ export default function TetrisGame({
             drawSprite(
               ctx,
               img,
-              (p.x + c) * CELL,
-              (p.y + r) * CELL,
-              CELL,
+              (p.x + c) * cellSize,
+              (p.y + r) * cellSize,
+              cellSize,
               kindFill(p.kind, isKeira),
             );
           }
@@ -421,7 +470,7 @@ export default function TetrisGame({
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [paused, over, theme, isKeira, move, pack, artTick]);
+  }, [paused, over, theme, isKeira, move, pack, artTick, cellPx]);
 
   const onWellPointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
     swipeRef.current = { x: e.clientX, y: e.clientY };
@@ -449,9 +498,15 @@ export default function TetrisGame({
 
   const nextImg = `/games/tetris/${pack.prefix}-${nextKind}.png`;
 
+  const wellW = COLS * cellPx;
+  const wellH = ROWS * cellPx;
+
   return (
-    <div className="flex w-full flex-col items-center gap-3">
-      <div className="flex w-full max-w-md items-center gap-3">
+    <div
+      ref={rootRef}
+      className="flex min-h-0 w-full flex-1 flex-col gap-2 sm:gap-3"
+    >
+      <div ref={hudRef} className="flex w-full shrink-0 items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={cardSrc(pack.prefix)}
@@ -478,12 +533,16 @@ export default function TetrisGame({
           <img src={nextImg} alt="" className="h-12 w-12 object-cover" />
         </div>
       </div>
-      <div className="relative w-full max-w-[340px]">
+      <div
+        ref={stageRef}
+        className="relative flex min-h-0 w-full flex-1 items-center justify-center"
+      >
         <canvas
           ref={canvasRef}
-          width={COLS * CELL}
-          height={ROWS * CELL}
-          className="w-full touch-none rounded-3xl border-4 border-white/80 shadow-lg"
+          width={wellW}
+          height={wellH}
+          className="touch-none rounded-3xl border-4 border-white/80 shadow-lg"
+          style={{ width: wellW, height: wellH, maxWidth: "100%", maxHeight: "100%" }}
           onPointerDown={onWellPointerDown}
           onPointerUp={onWellPointerUp}
           onPointerCancel={() => {
@@ -505,10 +564,10 @@ export default function TetrisGame({
           </div>
         ) : null}
       </div>
-      <div className="grid w-full max-w-md grid-cols-3 gap-2">
+      <div ref={controlsRef} className="grid w-full shrink-0 grid-cols-3 gap-2">
         <button
           type="button"
-          className="h-16 rounded-2xl bg-[var(--surface)] text-2xl font-black shadow-md active:scale-95"
+          className="h-14 min-h-12 rounded-2xl bg-[var(--surface)] text-2xl font-black shadow-md active:scale-95 sm:h-16"
           onPointerDown={() => startHold(() => move(-1, 0))}
           onPointerUp={stopHold}
           onPointerLeave={stopHold}
@@ -518,14 +577,14 @@ export default function TetrisGame({
         </button>
         <button
           type="button"
-          className="h-16 rounded-2xl bg-[var(--accent)] text-lg font-black text-[var(--accent-fg)] shadow-md active:scale-95"
+          className="h-14 min-h-12 rounded-2xl bg-[var(--surface)] text-lg font-black shadow-md active:scale-95 sm:h-16"
           onClick={rot}
         >
           Turn
         </button>
         <button
           type="button"
-          className="h-16 rounded-2xl bg-[var(--surface)] text-2xl font-black shadow-md active:scale-95"
+          className="h-14 min-h-12 rounded-2xl bg-[var(--surface)] text-2xl font-black shadow-md active:scale-95 sm:h-16"
           onPointerDown={() => startHold(() => move(1, 0))}
           onPointerUp={stopHold}
           onPointerLeave={stopHold}
@@ -535,7 +594,7 @@ export default function TetrisGame({
         </button>
         <button
           type="button"
-          className="h-14 rounded-2xl bg-[var(--surface)] text-base font-bold shadow-md active:scale-95"
+          className="h-12 min-h-12 rounded-2xl bg-[var(--surface)] text-base font-bold shadow-md active:scale-95 sm:h-14"
           onPointerDown={() => startHold(() => move(0, 1))}
           onPointerUp={stopHold}
           onPointerLeave={stopHold}
@@ -545,7 +604,7 @@ export default function TetrisGame({
         </button>
         <button
           type="button"
-          className="col-span-2 h-14 rounded-2xl bg-[var(--surface2)] text-base font-bold shadow-md active:scale-95"
+          className="col-span-2 h-12 min-h-12 rounded-2xl bg-[var(--accent)] text-base font-black text-[var(--accent-fg)] shadow-md active:scale-95 sm:h-14"
           onClick={hardDrop}
         >
           Drop
