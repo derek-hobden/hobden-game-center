@@ -1,5 +1,5 @@
 /* Hobden Game Center — offline shell service worker */
-const CACHE = "hobden-game-center-v1";
+const CACHE = "hobden-game-center-v2";
 const PRECACHE = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -16,6 +16,44 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+function isAppShellPath(pathname) {
+  return pathname === "/" || pathname === "";
+}
+
+async function handleNavigation(req) {
+  try {
+    const res = await fetch(req);
+    if (res.ok) {
+      const cache = await caches.open(CACHE);
+      const url = new URL(req.url);
+      // Keep "/" as the real home shell — never overwrite it with a deep-link page.
+      if (isAppShellPath(url.pathname)) {
+        await cache.put("/", res.clone());
+      }
+      await cache.put(req, res.clone());
+    }
+    return res;
+  } catch {
+    const exact = await caches.match(req);
+    if (exact) return exact;
+
+    const url = new URL(req.url);
+    if (!isAppShellPath(url.pathname)) {
+      return Response.redirect(new URL("/", url.origin), 303);
+    }
+
+    const shell = await caches.match("/");
+    if (shell) return shell;
+    return new Response(
+      "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Offline</title></head><body style=\"font-family:sans-serif;padding:2rem;text-align:center\"><p>You're offline. Open Hobden Game Center once while online to play later.</p><p><a href=\"/\">Try home</a></p></body></html>",
+      {
+        status: 503,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      },
+    );
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -23,17 +61,9 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Navigation: network-first, fall back to cached shell
+  // Navigation: network-first, then the exact cached page, then the home shell.
   if (req.mode === "navigate") {
-    event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put("/", copy));
-          return res;
-        })
-        .catch(() => caches.match("/") || caches.match(req)),
-    );
+    event.respondWith(handleNavigation(req));
     return;
   }
 

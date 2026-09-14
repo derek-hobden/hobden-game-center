@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Fredoka } from "next/font/google";
 import { ProfileProvider } from "@/context/profile-context";
 import { PwaRegister } from "@/components/pwa-register";
-import { SuppressIosCallout } from "@/components/suppress-ios-callout";
 import "./globals.css";
 
 const fredoka = Fredoka({
@@ -57,7 +56,6 @@ export default function RootLayout({
         <ProfileProvider>
           {children}
           <PwaRegister />
-          <SuppressIosCallout />
         </ProfileProvider>
       </body>
     </html>

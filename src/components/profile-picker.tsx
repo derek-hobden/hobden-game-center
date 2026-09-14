@@ -8,7 +8,7 @@ export function ProfilePicker() {
   const { setProfile } = useProfile();
 
   return (
-    <section className="mx-auto flex min-h-[100dvh] w-full max-w-3xl flex-col justify-center gap-8 px-5 py-10">
+    <section className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col justify-center gap-8 px-5 py-10">
       <header className="hero-enter text-center">
         <p className="brand-mark mb-3 text-5xl font-black tracking-tight sm:text-6xl">
           Hobden Game Center
