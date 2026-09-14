@@ -56,6 +56,7 @@ export function GameShell({ gameId }: { gameId: string }) {
   const [paused, setPaused] = useState(false);
   const [score, setScore] = useState(0);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [gameCrashed, setGameCrashed] = useState(false);
 
   useEffect(() => {
     if (ready && !profileId) router.replace("/");
@@ -123,33 +124,42 @@ export function GameShell({ gameId }: { gameId: string }) {
           className="shrink-0 px-3 sm:px-5"
           onClick={() => setPaused((p) => !p)}
           aria-pressed={paused}
+          disabled={gameCrashed}
         >
           {paused ? "Resume" : "Pause"}
         </Button>
       </header>
 
       <SuppressIosCallout className="relative flex flex-1 flex-col items-center justify-center rounded-[2rem] border-4 border-white/50 bg-white/25 p-3 shadow-inner backdrop-blur-sm sm:p-5">
-        {paused ? (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-[1.7rem] bg-[var(--ink)]/50 text-white backdrop-blur-sm">
-            <p className="text-4xl font-black">Paused</p>
-            <p className="text-2xl font-black">Score {score}</p>
-            <Button size="xl" onClick={() => setPaused(false)}>
-              Resume
-            </Button>
-            <Button asChild variant="secondary" size="lg">
-              <Link href="/">Back to menu</Link>
-            </Button>
-          </div>
-        ) : null}
-
         <GameErrorBoundary
           key={`${gameId}-${loadAttempt}`}
+          onError={() => {
+            setGameCrashed(true);
+            setPaused(false);
+          }}
           fallback={
             <GameCrashRecovery
-              onRetry={() => setLoadAttempt((n) => n + 1)}
+              onRetry={() => {
+                setGameCrashed(false);
+                setPaused(false);
+                setLoadAttempt((n) => n + 1);
+              }}
             />
           }
         >
+          {paused ? (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-[1.7rem] bg-[var(--ink)]/50 text-white backdrop-blur-sm">
+              <p className="text-4xl font-black">Paused</p>
+              <p className="text-2xl font-black">Score {score}</p>
+              <Button size="xl" onClick={() => setPaused(false)}>
+                Resume
+              </Button>
+              <Button asChild variant="secondary" size="lg">
+                <Link href="/">Back to menu</Link>
+              </Button>
+            </div>
+          ) : null}
+
           <Suspense
             fallback={
               <div className="flex flex-col items-center gap-3 py-10">

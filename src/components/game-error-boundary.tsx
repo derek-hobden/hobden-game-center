@@ -5,6 +5,7 @@ import { Component, type ReactNode } from "react";
 type Props = {
   children: ReactNode;
   fallback: ReactNode;
+  onError?: () => void;
 };
 
 type State = {
@@ -16,6 +17,10 @@ export class GameErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(): State {
     return { hasError: true };
+  }
+
+  componentDidCatch() {
+    this.props.onError?.();
   }
 
   render() {
