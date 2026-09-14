@@ -9,7 +9,7 @@ import {
   COLS,
   type Cell,
   MINES,
-  preserveFlags,
+  prepareOpen,
   ROWS,
 } from "./board";
 
@@ -95,15 +95,14 @@ export default function MinesweeperGame({
 
   const openCell = (r: number, c: number) => {
     if (paused || status !== "playing") return;
+    let markStarted = false;
     setBoard((prev) => {
       if (!prev) return prev;
-      let working = prev;
-      if (!started) {
-        working = preserveFlags(prev, buildBoard(r, c));
-        setStarted(true);
-      }
+      const prep = prepareOpen(prev, r, c, started);
+      if (!prep) return prev;
+      markStarted = prep.markStarted;
+      const { working } = prep;
       const cell = working[r][c];
-      if (cell.open || cell.flagged) return working === prev ? prev : working;
       if (cell.mine) {
         const lost = clone(working);
         lost.forEach((row) =>
@@ -119,6 +118,7 @@ export default function MinesweeperGame({
       if (safeLeft === 0) setStatus("won");
       return next;
     });
+    if (markStarted) setStarted(true);
     setPop(`${r}-${c}`);
   };
 

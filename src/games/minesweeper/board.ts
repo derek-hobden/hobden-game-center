@@ -65,3 +65,47 @@ export function preserveFlags(from: Cell[][], to: Cell[][]): Cell[][] {
   }
   return to;
 }
+
+export type OpenPrep = {
+  working: Cell[][];
+  markStarted: boolean;
+};
+
+/**
+ * Prepare board state for opening (r, c). Returns null when the click cannot
+ * reveal (already open or flagged on the current board). Regenerates mines only
+ * when the game has not started and the target cell is openable.
+ */
+export function prepareOpen(
+  prev: Cell[][],
+  r: number,
+  c: number,
+  gameStarted: boolean,
+): OpenPrep | null {
+  if (prev[r][c].open || prev[r][c].flagged) return null;
+
+  let working = prev;
+  let markStarted = false;
+  if (!gameStarted) {
+    working = preserveFlags(prev, buildBoard(r, c));
+    markStarted = true;
+  }
+
+  const cell = working[r][c];
+  if (cell.open || cell.flagged) return null;
+
+  return { working, markStarted };
+}
+
+export function isSafeFirstClick(board: Cell[][], r: number, c: number): boolean {
+  if (board[r][c].mine) return false;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      const rr = r + dr;
+      const cc = c + dc;
+      if (rr < 0 || cc < 0 || rr >= ROWS || cc >= COLS) continue;
+      if (board[rr][cc].mine) return false;
+    }
+  }
+  return true;
+}
