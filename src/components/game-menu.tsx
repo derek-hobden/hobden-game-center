@@ -34,7 +34,7 @@ export function GameMenu() {
           const inner = (
             <div
               className={cn(
-                "menu-tile relative flex min-h-36 flex-col justify-between overflow-hidden rounded-[1.6rem] border-4 border-white/60 p-4 text-left shadow-lg",
+                "menu-tile relative flex h-full min-h-36 flex-col justify-between overflow-hidden rounded-[1.6rem] border-4 border-white/60 p-4 text-left shadow-lg",
                 ready ? "active:scale-[0.98]" : "opacity-80",
               )}
               style={{
@@ -62,14 +62,14 @@ export function GameMenu() {
 
           if (!ready) {
             return (
-              <div key={game.id} aria-disabled className="cursor-default">
+              <div key={game.id} aria-disabled className="h-full cursor-default">
                 {inner}
               </div>
             );
           }
 
           return (
-            <Link key={game.id} href={`/play/${game.id}`} className="block">
+            <Link key={game.id} href={`/play/${game.id}`} className="block h-full">
               {inner}
             </Link>
           );
