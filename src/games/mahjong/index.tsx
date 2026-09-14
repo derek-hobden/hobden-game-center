@@ -10,72 +10,13 @@ import {
   blockedCopy,
   hintCopy,
   kindLabel,
-  kindsFor,
   missCopy,
   tableSrc,
   tileSrc,
   winSrc,
   type TileKind,
 } from "./art";
-
-type BoardTile = {
-  slotId: number;
-  kind: TileKind;
-  matched: boolean;
-};
-
-function shuffle<T>(items: T[]): T[] {
-  const next = [...items];
-  for (let i = next.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [next[i], next[j]] = [next[j], next[i]];
-  }
-  return next;
-}
-
-function pairKinds(profileId: GameProps["profileId"]): TileKind[] {
-  const kinds = kindsFor(profileId);
-  const pairs: TileKind[] = [];
-  kinds.forEach((kind, index) => {
-    const extra = index < 2 ? 2 : 1;
-    for (let n = 0; n < extra; n++) pairs.push(kind);
-  });
-  return shuffle(pairs);
-}
-
-function openSlots(filled: Map<number, TileKind>): number[] {
-  return SLOTS.filter((slot) => {
-    if (filled.has(slot.id)) return false;
-    const blocked = SLOTS.some(
-      (other) => filled.has(other.id) && other.covers.includes(slot.id),
-    );
-    return !blocked;
-  }).map((slot) => slot.id);
-}
-
-function dealBoard(profileId: GameProps["profileId"]): BoardTile[] {
-  const pairs = pairKinds(profileId);
-  const filled = new Map<number, TileKind>();
-
-  for (const kind of pairs) {
-    const open = openSlots(filled);
-    if (open.length < 2) break;
-    const picks = shuffle(open).slice(0, 2);
-    filled.set(picks[0], kind);
-    filled.set(picks[1], kind);
-  }
-
-  const leftovers = SLOTS.filter((slot) => !filled.has(slot.id));
-  leftovers.forEach((slot, i) => {
-    filled.set(slot.id, kindsFor(profileId)[i % 8]);
-  });
-
-  return SLOTS.map((slot) => ({
-    slotId: slot.id,
-    kind: filled.get(slot.id)!,
-    matched: false,
-  }));
-}
+import { dealBoard, type BoardTile } from "./deal";
 
 function isFree(tiles: BoardTile[], slotId: number): boolean {
   const tile = tiles.find((t) => t.slotId === slotId);
