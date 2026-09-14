@@ -11,30 +11,30 @@ export function GameMenu() {
   if (!profile) return null;
 
   return (
-    <section className="mx-auto flex min-h-[100dvh] w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6">
+    <section className="mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex items-start justify-between gap-3">
-        <div>
-          <p className="brand-mark text-3xl font-black tracking-tight sm:text-4xl">
+        <div className="min-w-0">
+          <p className="text-sm font-bold uppercase tracking-wide text-[var(--ink)]/55">
             Hobden Game Center
           </p>
-          <h1 className="mt-2 text-xl font-bold text-[var(--ink)] sm:text-2xl">
+          <h1 className="mt-1 text-2xl font-black text-[var(--ink)] sm:text-3xl">
             {profile.greeting}
           </h1>
-          <p className="mt-1 text-sm text-[var(--ink)]/65">{profile.menuHint}</p>
+          <p className="mt-1 text-sm text-[var(--ink)]/70">{profile.menuHint}</p>
         </div>
         <Button variant="secondary" size="default" onClick={clearProfile}>
           {profile.emoji} Switch
         </Button>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 md:gap-4">
         {GAME_REGISTRY.map((game, i) => {
           const title = profile.gameNames[game.id] ?? game.title;
           const ready = game.status === "ready";
           const inner = (
             <div
               className={cn(
-                "menu-tile relative flex min-h-36 flex-col justify-between overflow-hidden rounded-[1.6rem] border-4 border-white/60 p-4 text-left shadow-lg",
+                "menu-tile relative flex h-full min-h-36 flex-col justify-between overflow-hidden rounded-[1.6rem] border-4 border-white/60 p-4 text-left shadow-lg",
                 ready ? "active:scale-[0.98]" : "opacity-80",
               )}
               style={{
@@ -48,7 +48,7 @@ export function GameMenu() {
                 <p className="text-lg font-black leading-tight text-[var(--ink)]">
                   {title}
                 </p>
-                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[var(--ink)]/60">
+                <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-[var(--ink)]/80">
                   {ready ? game.controlHint : "Coming soon"}
                 </p>
               </div>
@@ -62,14 +62,14 @@ export function GameMenu() {
 
           if (!ready) {
             return (
-              <div key={game.id} aria-disabled className="cursor-default">
+              <div key={game.id} aria-disabled className="h-full cursor-default">
                 {inner}
               </div>
             );
           }
 
           return (
-            <Link key={game.id} href={`/play/${game.id}`} className="block">
+            <Link key={game.id} href={`/play/${game.id}`} className="block h-full">
               {inner}
             </Link>
           );

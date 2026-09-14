@@ -18,5 +18,5 @@ export async function generateMetadata({
 
 export default async function PlayPage({ params }: PageProps) {
   const { gameId } = await params;
-  return <GameShell gameId={gameId} />;
+  return <GameShell key={gameId} gameId={gameId} />;
 }
