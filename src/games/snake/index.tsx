@@ -17,8 +17,11 @@ type Spark = { x: number; y: number; life: number; hue: number };
 
 const COLS = 11;
 const ROWS = 11;
-/** Fraction of board art reserved for border decorations (rockets, chips). */
-const PLAY_INSET = 0.145;
+/** Horizontal inset — keeps side chips and corner rockets outside the play square. */
+const PLAY_INSET_X = 0.162;
+/** Extra top inset — top-center launchpad art extends below a uniform margin. */
+const PLAY_INSET_Y_TOP = 0.185;
+const PLAY_INSET_Y_BOTTOM = 0.158;
 const BASE_STEP_MS = 310;
 const MIN_STEP_MS = 210;
 const SWIPE_MIN = 18;
@@ -43,16 +46,34 @@ function stepMs(score: number) {
 }
 
 function playMetrics(cssW: number) {
-  const pad = cssW * PLAY_INSET;
-  const playSize = cssW - pad * 2;
+  const padX = cssW * PLAY_INSET_X;
+  const padTopMargin = cssW * PLAY_INSET_Y_TOP;
+  const padBottomMargin = cssW * PLAY_INSET_Y_BOTTOM;
+  const playW = cssW - padX * 2;
+  const playH = cssW - padTopMargin - padBottomMargin;
+  const playSize = Math.min(playW, playH);
+  const padLeft = padX + (playW - playSize) / 2;
+  const padTop = padTopMargin + (playH - playSize) / 2;
   const cell = playSize / COLS;
-  return { pad, playSize, cell };
+  return { padLeft, padTop, playSize, cell };
 }
 
-function cellCenter(seg: Point, pad: number, cell: number) {
+function boardInnerCrop(board: HTMLImageElement) {
+  const srcPadX = board.width * PLAY_INSET_X;
+  const srcPadTop = board.height * PLAY_INSET_Y_TOP;
+  const srcPadBottom = board.height * PLAY_INSET_Y_BOTTOM;
+  const srcPlayW = board.width - srcPadX * 2;
+  const srcPlayH = board.height - srcPadTop - srcPadBottom;
+  const srcSize = Math.min(srcPlayW, srcPlayH);
+  const srcLeft = srcPadX + (srcPlayW - srcSize) / 2;
+  const srcTop = srcPadTop + (srcPlayH - srcSize) / 2;
+  return { srcLeft, srcTop, srcSize };
+}
+
+function cellCenter(seg: Point, padLeft: number, padTop: number, cell: number) {
   return {
-    x: pad + seg.x * cell + cell / 2,
-    y: pad + seg.y * cell + cell / 2,
+    x: padLeft + seg.x * cell + cell / 2,
+    y: padTop + seg.y * cell + cell / 2,
   };
 }
 
@@ -201,6 +222,7 @@ export default function SnakeGame({
 
     let cssW = 0;
     let cssH = 0;
+    let lastDpr = 0;
 
     const applyCanvasSize = () => {
       const nextW = Math.max(1, Math.round(canvas.clientWidth));
@@ -212,12 +234,14 @@ export default function SnakeGame({
         nextW === cssW &&
         nextH === cssH &&
         canvas.width === backingW &&
-        canvas.height === backingH
+        canvas.height === backingH &&
+        dpr === lastDpr
       ) {
         return;
       }
       cssW = nextW;
       cssH = nextH;
+      lastDpr = dpr;
       canvas.width = backingW;
       canvas.height = backingH;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -234,8 +258,8 @@ export default function SnakeGame({
 
     const burst = (cell: Point, hueBase: number) => {
       if (cssW < 1) return;
-      const { pad, cell: cellSize } = playMetrics(cssW);
-      const center = cellCenter(cell, pad, cellSize);
+      const { padLeft, padTop, cell: cellSize } = playMetrics(cssW);
+      const center = cellCenter(cell, padLeft, padTop, cellSize);
       for (let i = 0; i < 10; i++) {
         sparksRef.current.push({
           x: center.x + (Math.random() - 0.5) * cellSize,
@@ -248,25 +272,24 @@ export default function SnakeGame({
 
     const draw = (ts: number) => {
       if (cssW < 1 || cssH < 1) return;
-      const { pad, playSize, cell: cellSize } = playMetrics(cssW);
+      const { padLeft, padTop, playSize, cell: cellSize } = playMetrics(cssW);
       ctx.clearRect(0, 0, cssW, cssH);
       if (board) {
         ctx.drawImage(board, 0, 0, cssW, cssH);
-        const srcPad = board.width * PLAY_INSET;
-        const srcSize = board.width * (1 - 2 * PLAY_INSET);
+        const { srcLeft, srcTop, srcSize } = boardInnerCrop(board);
         ctx.drawImage(
           board,
-          srcPad,
-          srcPad,
+          srcLeft,
+          srcTop,
           srcSize,
           srcSize,
-          pad,
-          pad,
+          padLeft,
+          padTop,
           playSize,
           playSize,
         );
         ctx.fillStyle = "rgba(255,255,255,0.18)";
-        ctx.fillRect(pad, pad, playSize, playSize);
+        ctx.fillRect(padLeft, padTop, playSize, playSize);
       } else {
         const g = ctx.createLinearGradient(0, 0, cssW, cssH);
         g.addColorStop(0, theme.skyFrom);
@@ -278,22 +301,23 @@ export default function SnakeGame({
       ctx.strokeStyle = isKeira
         ? "rgba(244,114,182,0.7)"
         : "rgba(14,165,233,0.7)";
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 5;
+      const frameInset = 3;
       ctx.strokeRect(
-        pad + 2,
-        pad + 2,
-        playSize - 4,
-        playSize - 4,
+        padLeft + frameInset,
+        padTop + frameInset,
+        playSize - frameInset * 2,
+        playSize - frameInset * 2,
       );
 
       if (wrapFlashRef.current > 0) {
         ctx.fillStyle = `rgba(255,255,255,${wrapFlashRef.current / 18})`;
-        ctx.fillRect(pad, pad, playSize, playSize);
+        ctx.fillRect(padLeft, padTop, playSize, playSize);
         wrapFlashRef.current -= 1;
       }
 
       const food = foodRef.current;
-      const foodCenter = cellCenter(food, pad, cellSize);
+      const foodCenter = cellCenter(food, padLeft, padTop, cellSize);
       const fx = foodCenter.x;
       const fy = foodCenter.y;
       const pulse = 1 + Math.sin(ts / 180) * 0.08;
@@ -310,7 +334,7 @@ export default function SnakeGame({
       const snake = snakeRef.current;
       for (let i = snake.length - 1; i >= 0; i--) {
         const seg = snake[i];
-        const { x: cx, y: cy } = cellCenter(seg, pad, cellSize);
+        const { x: cx, y: cy } = cellCenter(seg, padLeft, padTop, cellSize);
         const isHead = i === 0;
         const isTail = i === snake.length - 1 && snake.length > 1;
         if (isHead) {
