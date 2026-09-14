@@ -7,12 +7,17 @@ import {
   useMemo,
   useState,
   type ComponentType,
+  type MouseEvent,
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getGame, type GameProps } from "@/lib/game-registry";
 import { useProfile } from "@/context/profile-context";
 import { Button } from "@/components/ui/button";
+
+function preventCallout(event: MouseEvent) {
+  event.preventDefault();
+}
 
 export function GameShell({ gameId }: { gameId: string }) {
   const router = useRouter();
@@ -77,7 +82,10 @@ export function GameShell({ gameId }: { gameId: string }) {
   const title = profile.gameNames[meta.id] ?? meta.title;
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-3xl flex-col gap-4 px-3 py-4 sm:px-5">
+    <div
+      className="mx-auto flex min-h-[100dvh] w-full max-w-3xl flex-col gap-4 px-3 py-4 sm:px-5"
+      onContextMenu={preventCallout}
+    >
       <header className="flex items-center justify-between gap-2">
         <Button asChild variant="secondary" size="lg">
           <Link href="/" aria-label="Back to menu">
