@@ -466,12 +466,11 @@ export default function TetrisGame({
     const loop = (ts: number) => {
       raf = requestAnimationFrame(loop);
       if (gravityLastRef.current === 0) gravityLastRef.current = ts;
-      if (
-        !paused &&
-        !over &&
-        flashRowsRef.current.length === 0 &&
-        ts - gravityLastRef.current > GRAVITY_MS
-      ) {
+      const gravityActive =
+        !paused && !over && flashRowsRef.current.length === 0;
+      if (!gravityActive) {
+        gravityLastRef.current = ts;
+      } else if (ts - gravityLastRef.current > GRAVITY_MS) {
         gravityLastRef.current = ts;
         move(0, 1);
       }
