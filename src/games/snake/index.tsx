@@ -17,7 +17,6 @@ type Spark = { x: number; y: number; life: number; hue: number };
 
 const COLS = 11;
 const ROWS = 11;
-const CELL = 32;
 /** Fraction of board art reserved for border decorations (rockets, chips). */
 const PLAY_INSET = 0.145;
 const BASE_STEP_MS = 310;
@@ -200,17 +199,41 @@ export default function SnakeGame({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const cssW = COLS * CELL;
-    const cssH = ROWS * CELL;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = cssW * dpr;
-    canvas.height = cssH * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    let cssW = 0;
+    let cssH = 0;
+
+    const applyCanvasSize = () => {
+      const nextW = Math.max(1, Math.round(canvas.clientWidth));
+      const nextH = Math.max(1, Math.round(canvas.clientHeight));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const backingW = Math.round(nextW * dpr);
+      const backingH = Math.round(nextH * dpr);
+      if (
+        nextW === cssW &&
+        nextH === cssH &&
+        canvas.width === backingW &&
+        canvas.height === backingH
+      ) {
+        return;
+      }
+      cssW = nextW;
+      cssH = nextH;
+      canvas.width = backingW;
+      canvas.height = backingH;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    applyCanvasSize();
+    const resizeObserver = new ResizeObserver(() => {
+      applyCanvasSize();
+    });
+    resizeObserver.observe(canvas);
 
     let raf = 0;
     let last = 0;
 
     const burst = (cell: Point, hueBase: number) => {
+      if (cssW < 1) return;
       const { pad, cell: cellSize } = playMetrics(cssW);
       const center = cellCenter(cell, pad, cellSize);
       for (let i = 0; i < 10; i++) {
@@ -224,6 +247,7 @@ export default function SnakeGame({
     };
 
     const draw = (ts: number) => {
+      if (cssW < 1 || cssH < 1) return;
       const { pad, playSize, cell: cellSize } = playMetrics(cssW);
       ctx.clearRect(0, 0, cssW, cssH);
       if (board) {
@@ -414,7 +438,10 @@ export default function SnakeGame({
     };
 
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      resizeObserver.disconnect();
+      cancelAnimationFrame(raf);
+    };
   }, [
     paused,
     over,
@@ -497,8 +524,6 @@ export default function SnakeGame({
 
       <canvas
         ref={canvasRef}
-        width={COLS * CELL}
-        height={ROWS * CELL}
         className="aspect-square w-full max-w-[min(100%,calc(100dvh-18rem))] touch-none rounded-3xl border-4 border-white/80 shadow-lg"
         onPointerDown={onPointerDownBoard}
         onPointerUp={onPointerUpBoard}
