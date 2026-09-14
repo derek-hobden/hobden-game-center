@@ -18,6 +18,8 @@ type Spark = { x: number; y: number; life: number; hue: number };
 const COLS = 11;
 const ROWS = 11;
 const CELL = 32;
+/** Fraction of board art reserved for border decorations (rockets, chips). */
+const PLAY_INSET = 0.145;
 const BASE_STEP_MS = 310;
 const MIN_STEP_MS = 210;
 const SWIPE_MIN = 18;
@@ -39,6 +41,20 @@ function opposite(a: Dir, b: Dir) {
 
 function stepMs(score: number) {
   return Math.max(MIN_STEP_MS, BASE_STEP_MS - score * 6);
+}
+
+function playMetrics(cssW: number) {
+  const pad = cssW * PLAY_INSET;
+  const playSize = cssW - pad * 2;
+  const cell = playSize / COLS;
+  return { pad, playSize, cell };
+}
+
+function cellCenter(seg: Point, pad: number, cell: number) {
+  return {
+    x: pad + seg.x * cell + cell / 2,
+    y: pad + seg.y * cell + cell / 2,
+  };
 }
 
 function headingFor(dir: Dir): number {
@@ -195,10 +211,12 @@ export default function SnakeGame({
     let last = 0;
 
     const burst = (cell: Point, hueBase: number) => {
+      const { pad, cell: cellSize } = playMetrics(cssW);
+      const center = cellCenter(cell, pad, cellSize);
       for (let i = 0; i < 10; i++) {
         sparksRef.current.push({
-          x: cell.x * CELL + CELL / 2 + (Math.random() - 0.5) * CELL,
-          y: cell.y * CELL + CELL / 2 + (Math.random() - 0.5) * CELL,
+          x: center.x + (Math.random() - 0.5) * cellSize,
+          y: center.y + (Math.random() - 0.5) * cellSize,
           life: 14 + Math.random() * 8,
           hue: hueBase + Math.random() * 40,
         });
@@ -206,11 +224,25 @@ export default function SnakeGame({
     };
 
     const draw = (ts: number) => {
+      const { pad, playSize, cell: cellSize } = playMetrics(cssW);
       ctx.clearRect(0, 0, cssW, cssH);
       if (board) {
         ctx.drawImage(board, 0, 0, cssW, cssH);
+        const srcPad = board.width * PLAY_INSET;
+        const srcSize = board.width * (1 - 2 * PLAY_INSET);
+        ctx.drawImage(
+          board,
+          srcPad,
+          srcPad,
+          srcSize,
+          srcSize,
+          pad,
+          pad,
+          playSize,
+          playSize,
+        );
         ctx.fillStyle = "rgba(255,255,255,0.18)";
-        ctx.fillRect(0, 0, cssW, cssH);
+        ctx.fillRect(pad, pad, playSize, playSize);
       } else {
         const g = ctx.createLinearGradient(0, 0, cssW, cssH);
         g.addColorStop(0, theme.skyFrom);
@@ -222,38 +254,43 @@ export default function SnakeGame({
       ctx.strokeStyle = isKeira
         ? "rgba(244,114,182,0.7)"
         : "rgba(14,165,233,0.7)";
-      ctx.lineWidth = 8;
-      ctx.strokeRect(4, 4, cssW - 8, cssH - 8);
+      ctx.lineWidth = 6;
+      ctx.strokeRect(
+        pad + 2,
+        pad + 2,
+        playSize - 4,
+        playSize - 4,
+      );
 
       if (wrapFlashRef.current > 0) {
         ctx.fillStyle = `rgba(255,255,255,${wrapFlashRef.current / 18})`;
-        ctx.fillRect(0, 0, cssW, cssH);
+        ctx.fillRect(pad, pad, playSize, playSize);
         wrapFlashRef.current -= 1;
       }
 
       const food = foodRef.current;
-      const fx = food.x * CELL + CELL / 2;
-      const fy = food.y * CELL + CELL / 2;
+      const foodCenter = cellCenter(food, pad, cellSize);
+      const fx = foodCenter.x;
+      const fy = foodCenter.y;
       const pulse = 1 + Math.sin(ts / 180) * 0.08;
-      const foodSize = CELL * 0.92 * pulse;
+      const foodSize = cellSize * 0.92 * pulse;
       if (
         !drawSprite(ctx, foodArt, fx, fy, foodSize)
       ) {
         ctx.beginPath();
         ctx.fillStyle = isKeira ? "#f9a8d4" : "#fde047";
-        ctx.arc(fx, fy, CELL * 0.34, 0, Math.PI * 2);
+        ctx.arc(fx, fy, cellSize * 0.34, 0, Math.PI * 2);
         ctx.fill();
       }
 
       const snake = snakeRef.current;
       for (let i = snake.length - 1; i >= 0; i--) {
         const seg = snake[i];
-        const cx = seg.x * CELL + CELL / 2;
-        const cy = seg.y * CELL + CELL / 2;
+        const { x: cx, y: cy } = cellCenter(seg, pad, cellSize);
         const isHead = i === 0;
         const isTail = i === snake.length - 1 && snake.length > 1;
         if (isHead) {
-          drawSprite(ctx, head, cx, cy, CELL * 1.12, headingFor(dirRef.current));
+          drawSprite(ctx, head, cx, cy, cellSize * 1.12, headingFor(dirRef.current));
         } else if (isTail) {
           const prev = snake[i - 1];
           let tailDir: Dir = "right";
@@ -261,11 +298,11 @@ export default function SnakeGame({
           else if (prev.x < seg.x) tailDir = "left";
           else if (prev.y > seg.y) tailDir = "down";
           else tailDir = "up";
-          if (!drawSprite(ctx, tail, cx, cy, CELL * 0.95, headingFor(tailDir))) {
-            drawSprite(ctx, body, cx, cy, CELL * 0.9);
+          if (!drawSprite(ctx, tail, cx, cy, cellSize * 0.95, headingFor(tailDir))) {
+            drawSprite(ctx, body, cx, cy, cellSize * 0.9);
           }
         } else {
-          drawSprite(ctx, body, cx, cy, CELL * 0.98);
+          drawSprite(ctx, body, cx, cy, cellSize * 0.98);
         }
       }
 
@@ -431,8 +468,8 @@ export default function SnakeGame({
   }, [isKeira, over, score, treatName, won]);
 
   return (
-    <div className="flex w-full flex-col items-center gap-2">
-      <div className="flex w-full max-w-md items-center justify-between gap-2 text-lg font-black text-[var(--ink)]">
+    <div className="flex w-full min-w-0 flex-col items-center gap-2">
+      <div className="flex w-full min-w-0 items-center justify-between gap-2 text-lg font-black text-[var(--ink)]">
         <span className="truncate">
           {theme.gameNames.snake} · {score}
         </span>
@@ -462,8 +499,7 @@ export default function SnakeGame({
         ref={canvasRef}
         width={COLS * CELL}
         height={ROWS * CELL}
-        className="max-w-full touch-none rounded-3xl border-4 border-white/80 shadow-lg"
-        style={{ width: "min(100%, 352px)", aspectRatio: "1 / 1" }}
+        className="aspect-square w-full max-w-[min(100%,calc(100dvh-18rem))] touch-none rounded-3xl border-4 border-white/80 shadow-lg"
         onPointerDown={onPointerDownBoard}
         onPointerUp={onPointerUpBoard}
         onPointerCancel={() => {
