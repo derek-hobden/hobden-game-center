@@ -80,6 +80,18 @@ export function cardSrc(prefix: TetrisPack["prefix"]): string {
   return `/games/tetris/${prefix}-card.png`;
 }
 
+export const TETRIS_COLS = 10;
+export const TETRIS_ROWS = 14;
+export const TETRIS_MAX_CELL = 52;
+
+/** Fit uniform cell size; may go below 22px if the stage is very small (no distortion). */
+export function fitTetrisCellSize(width: number, height: number): number {
+  if (width < 1 || height < 1) return 22;
+  const byW = Math.floor(width / TETRIS_COLS);
+  const byH = Math.floor(height / TETRIS_ROWS);
+  return Math.max(1, Math.min(TETRIS_MAX_CELL, byW, byH));
+}
+
 export function kindFill(kind: PieceKind, isKeira: boolean): string {
   switch (kind) {
     case "i":

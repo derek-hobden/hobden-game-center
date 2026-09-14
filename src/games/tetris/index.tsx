@@ -16,15 +16,16 @@ import {
   bgSrc,
   blockSrc,
   cardSrc,
+  fitTetrisCellSize,
   kindFill,
   tetrisPack,
+  TETRIS_COLS,
+  TETRIS_ROWS,
   type PieceKind,
 } from "./theme";
 
-const COLS = 10;
-const ROWS = 14;
-const MIN_CELL = 22;
-const MAX_CELL = 52;
+const COLS = TETRIS_COLS;
+const ROWS = TETRIS_ROWS;
 const GRAVITY_MS = 920;
 const HOLD_REPEAT_MS = 140;
 
@@ -139,8 +140,9 @@ export default function TetrisGame({
   const rootRef = useRef<HTMLDivElement>(null);
   const hudRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef(emptyBoard());
+  const cellPxRef = useRef(34);
+  const gravityLastRef = useRef(0);
   const pieceRef = useRef<Piece | null>(null);
   const nextRef = useRef<PieceKind>("t");
   const bagRef = useRef<PieceKind[]>([]);
@@ -155,6 +157,7 @@ export default function TetrisGame({
   const [nextKind, setNextKind] = useState<PieceKind>("t");
   const [artTick, setArtTick] = useState(0);
   const [cellPx, setCellPx] = useState(34);
+  cellPxRef.current = cellPx;
 
   const theme = PROFILES[profileId];
   const pack = tetrisPack(profileId);
@@ -193,22 +196,15 @@ export default function TetrisGame({
     const root = rootRef.current;
     if (!root) return;
 
-    const fitCell = (width: number, height: number) => {
-      if (width < 1 || height < 1) return MIN_CELL;
-      const byW = Math.floor(width / COLS);
-      const byH = Math.floor(height / ROWS);
-      return Math.max(MIN_CELL, Math.min(MAX_CELL, byW, byH));
-    };
-
     const apply = () => {
       const hud = hudRef.current?.offsetHeight ?? 0;
       const controls = controlsRef.current?.offsetHeight ?? 0;
-      const gap = 8;
-      const gaps = hud && controls ? gap * 2 : gap;
+      const gapPx = parseFloat(getComputedStyle(root).rowGap) || 8;
+      const gapCount = hud && controls ? 2 : 1;
       const width = root.clientWidth;
-      const height = root.clientHeight - hud - controls - gaps;
+      const height = root.clientHeight - hud - controls - gapPx * gapCount;
       setCellPx((prev) => {
-        const next = fitCell(width, height);
+        const next = fitTetrisCellSize(width, height);
         return prev === next ? prev : next;
       });
     };
@@ -363,22 +359,29 @@ export default function TetrisGame({
     return () => window.removeEventListener("keydown", onKey);
   }, [move, rot, hardDrop]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const cellSize = cellPx;
-    const w = COLS * cellSize;
-    const h = ROWS * cellSize;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
+    canvas.width = COLS * cellSize * dpr;
+    canvas.height = ROWS * cellSize * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }, [cellPx]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     let raf = 0;
-    let last = 0;
 
     const draw = (ts: number) => {
+      const cellSize = cellPxRef.current;
+      const w = COLS * cellSize;
+      const h = ROWS * cellSize;
       const bg = imagesRef.current[bgSrc(pack.prefix)];
       if (bg && bg.complete) {
         ctx.drawImage(bg, 0, 0, w, h);
@@ -462,15 +465,21 @@ export default function TetrisGame({
 
     const loop = (ts: number) => {
       raf = requestAnimationFrame(loop);
-      if (!paused && !over && flashRowsRef.current.length === 0 && ts - last > GRAVITY_MS) {
-        last = ts;
+      if (gravityLastRef.current === 0) gravityLastRef.current = ts;
+      if (
+        !paused &&
+        !over &&
+        flashRowsRef.current.length === 0 &&
+        ts - gravityLastRef.current > GRAVITY_MS
+      ) {
+        gravityLastRef.current = ts;
         move(0, 1);
       }
       draw(ts);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [paused, over, theme, isKeira, move, pack, artTick, cellPx]);
+  }, [paused, over, theme, isKeira, move, pack, artTick]);
 
   const onWellPointerDown = (e: PointerEvent<HTMLCanvasElement>) => {
     swipeRef.current = { x: e.clientX, y: e.clientY };
@@ -533,16 +542,17 @@ export default function TetrisGame({
           <img src={nextImg} alt="" className="h-12 w-12 object-cover" />
         </div>
       </div>
-      <div
-        ref={stageRef}
-        className="relative flex min-h-0 w-full flex-1 items-center justify-center"
-      >
+      <div className="relative flex min-h-0 w-full flex-1 items-center justify-center">
         <canvas
           ref={canvasRef}
           width={wellW}
           height={wellH}
-          className="touch-none rounded-3xl border-4 border-white/80 shadow-lg"
-          style={{ width: wellW, height: wellH, maxWidth: "100%", maxHeight: "100%" }}
+          className="h-auto max-h-full w-auto max-w-full touch-none rounded-3xl border-4 border-white/80 shadow-lg"
+          style={{
+            width: `min(100%, ${wellW}px)`,
+            aspectRatio: `${COLS} / ${ROWS}`,
+            maxHeight: "100%",
+          }}
           onPointerDown={onWellPointerDown}
           onPointerUp={onWellPointerUp}
           onPointerCancel={() => {
