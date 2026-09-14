@@ -1,0 +1,4 @@
+{
+  "name": "Hobden Game Center",
+  "install": "npm ci"
+}
