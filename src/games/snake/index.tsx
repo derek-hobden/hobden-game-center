@@ -45,17 +45,17 @@ function stepMs(score: number) {
   return Math.max(MIN_STEP_MS, BASE_STEP_MS - score * 6);
 }
 
-function playMetrics(cssW: number) {
+function playMetrics(cssW: number, cssH: number) {
   const padX = cssW * PLAY_INSET_X;
-  const padTopMargin = cssW * PLAY_INSET_Y_TOP;
-  const padBottomMargin = cssW * PLAY_INSET_Y_BOTTOM;
+  const padTopMargin = cssH * PLAY_INSET_Y_TOP;
+  const padBottomMargin = cssH * PLAY_INSET_Y_BOTTOM;
   const playW = cssW - padX * 2;
-  const playH = cssW - padTopMargin - padBottomMargin;
+  const playH = cssH - padTopMargin - padBottomMargin;
   const playSize = Math.min(playW, playH);
-  const padLeft = padX + (playW - playSize) / 2;
-  const padTop = padTopMargin + (playH - playSize) / 2;
+  const playPadLeft = padX + (playW - playSize) / 2;
+  const playPadTop = padTopMargin + (playH - playSize) / 2;
   const cell = playSize / COLS;
-  return { padLeft, padTop, playSize, cell };
+  return { playPadLeft, playPadTop, playSize, cell };
 }
 
 function boardInnerCrop(board: HTMLImageElement) {
@@ -70,10 +70,15 @@ function boardInnerCrop(board: HTMLImageElement) {
   return { srcLeft, srcTop, srcSize };
 }
 
-function cellCenter(seg: Point, padLeft: number, padTop: number, cell: number) {
+function cellCenter(
+  seg: Point,
+  playPadLeft: number,
+  playPadTop: number,
+  cell: number,
+) {
   return {
-    x: padLeft + seg.x * cell + cell / 2,
-    y: padTop + seg.y * cell + cell / 2,
+    x: playPadLeft + seg.x * cell + cell / 2,
+    y: playPadTop + seg.y * cell + cell / 2,
   };
 }
 
@@ -152,10 +157,10 @@ export default function SnakeGame({
   const body = useSprite(`/games/snake/${pack}-body.png`);
   const tail = useSprite(`/games/snake/${pack}-tail.png`);
   const foodArt = useSprite(`/games/snake/${pack}-food.png`);
-  const padUp = `/games/snake/pad-up.png`;
-  const padDown = `/games/snake/pad-down.png`;
-  const padLeft = `/games/snake/pad-left.png`;
-  const padRight = `/games/snake/pad-right.png`;
+  const padUpSrc = `/games/snake/pad-up.png`;
+  const padDownSrc = `/games/snake/pad-down.png`;
+  const padLeftSrc = `/games/snake/pad-left.png`;
+  const padRightSrc = `/games/snake/pad-right.png`;
   const artReady = Boolean(board && head && body && foodArt);
 
   const spawnFood = useCallback((snake: Point[]): Point | null => {
@@ -257,9 +262,12 @@ export default function SnakeGame({
     let last = 0;
 
     const burst = (cell: Point, hueBase: number) => {
-      if (cssW < 1) return;
-      const { padLeft, padTop, cell: cellSize } = playMetrics(cssW);
-      const center = cellCenter(cell, padLeft, padTop, cellSize);
+      if (cssW < 1 || cssH < 1) return;
+      const { playPadLeft, playPadTop, cell: cellSize } = playMetrics(
+        cssW,
+        cssH,
+      );
+      const center = cellCenter(cell, playPadLeft, playPadTop, cellSize);
       for (let i = 0; i < 10; i++) {
         sparksRef.current.push({
           x: center.x + (Math.random() - 0.5) * cellSize,
@@ -272,7 +280,8 @@ export default function SnakeGame({
 
     const draw = (ts: number) => {
       if (cssW < 1 || cssH < 1) return;
-      const { padLeft, padTop, playSize, cell: cellSize } = playMetrics(cssW);
+      const { playPadLeft, playPadTop, playSize, cell: cellSize } =
+        playMetrics(cssW, cssH);
       ctx.clearRect(0, 0, cssW, cssH);
       if (board) {
         ctx.drawImage(board, 0, 0, cssW, cssH);
@@ -283,13 +292,13 @@ export default function SnakeGame({
           srcTop,
           srcSize,
           srcSize,
-          padLeft,
-          padTop,
+          playPadLeft,
+          playPadTop,
           playSize,
           playSize,
         );
         ctx.fillStyle = "rgba(255,255,255,0.18)";
-        ctx.fillRect(padLeft, padTop, playSize, playSize);
+        ctx.fillRect(playPadLeft, playPadTop, playSize, playSize);
       } else {
         const g = ctx.createLinearGradient(0, 0, cssW, cssH);
         g.addColorStop(0, theme.skyFrom);
@@ -304,20 +313,20 @@ export default function SnakeGame({
       ctx.lineWidth = 5;
       const frameInset = 3;
       ctx.strokeRect(
-        padLeft + frameInset,
-        padTop + frameInset,
+        playPadLeft + frameInset,
+        playPadTop + frameInset,
         playSize - frameInset * 2,
         playSize - frameInset * 2,
       );
 
       if (wrapFlashRef.current > 0) {
         ctx.fillStyle = `rgba(255,255,255,${wrapFlashRef.current / 18})`;
-        ctx.fillRect(padLeft, padTop, playSize, playSize);
+        ctx.fillRect(playPadLeft, playPadTop, playSize, playSize);
         wrapFlashRef.current -= 1;
       }
 
       const food = foodRef.current;
-      const foodCenter = cellCenter(food, padLeft, padTop, cellSize);
+      const foodCenter = cellCenter(food, playPadLeft, playPadTop, cellSize);
       const fx = foodCenter.x;
       const fy = foodCenter.y;
       const pulse = 1 + Math.sin(ts / 180) * 0.08;
@@ -334,7 +343,12 @@ export default function SnakeGame({
       const snake = snakeRef.current;
       for (let i = snake.length - 1; i >= 0; i--) {
         const seg = snake[i];
-        const { x: cx, y: cy } = cellCenter(seg, padLeft, padTop, cellSize);
+        const { x: cx, y: cy } = cellCenter(
+          seg,
+          playPadLeft,
+          playPadTop,
+          cellSize,
+        );
         const isHead = i === 0;
         const isTail = i === snake.length - 1 && snake.length > 1;
         if (isHead) {
@@ -372,6 +386,10 @@ export default function SnakeGame({
 
     const tick = (ts: number) => {
       raf = requestAnimationFrame(tick);
+      const dprNow = Math.min(window.devicePixelRatio || 1, 2);
+      if (dprNow !== lastDpr) {
+        applyCanvasSize();
+      }
       if (paused || over || won) {
         draw(ts);
         return;
@@ -560,23 +578,23 @@ export default function SnakeGame({
         <div />
         <Pad
           label="up"
-          src={padUp}
+          src={padUpSrc}
           onPress={onPad("up")}
         />
         <div />
         <Pad
           label="left"
-          src={padLeft}
+          src={padLeftSrc}
           onPress={onPad("left")}
         />
         <Pad
           label="down"
-          src={padDown}
+          src={padDownSrc}
           onPress={onPad("down")}
         />
         <Pad
           label="right"
-          src={padRight}
+          src={padRightSrc}
           onPress={onPad("right")}
         />
       </div>
