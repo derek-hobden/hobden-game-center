@@ -7,10 +7,11 @@ import { cn } from "@/lib/utils";
 import { match2Art } from "./art";
 import {
   DEFAULT_DIFFICULTY,
-  DIFFICULTIES,
   DIFFICULTY_LABELS,
   buildDeck,
   difficultyConfig,
+  resolveDifficulty,
+  visibleDifficulties,
   type Difficulty,
 } from "./deck";
 
@@ -24,16 +25,21 @@ export default function Match2Game({
   paused,
   onScoreChange,
 }: GameProps) {
+  const art = match2Art(profileId);
   const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
   const [roundNonce, setRoundNonce] = useState(0);
+  const effectiveDifficulty = resolveDifficulty(
+    difficulty,
+    art.pairs.length,
+  );
 
   return (
     <Match2Round
-      key={`${profileId}-${difficulty}-${roundNonce}`}
+      key={`${profileId}-${effectiveDifficulty}-${roundNonce}`}
       profileId={profileId}
       paused={paused}
       onScoreChange={onScoreChange}
-      difficulty={difficulty}
+      difficulty={effectiveDifficulty}
       onDifficultyChange={setDifficulty}
       onNewGame={() => setRoundNonce((n) => n + 1)}
     />
@@ -54,8 +60,10 @@ function Match2Round({
 }) {
   const theme = PROFILES[profileId];
   const art = match2Art(profileId);
-  const { pairCount, columns } = difficultyConfig(difficulty);
+  const levels = visibleDifficulties(art.pairs.length);
+  const { columns } = difficultyConfig(difficulty);
   const [cards, setCards] = useState(() => buildDeck(art.pairs, difficulty));
+  const pairCount = cards.length / 2;
   const [flipped, setFlipped] = useState<number[]>([]);
   const [lock, setLock] = useState(false);
   const [moves, setMoves] = useState(0);
@@ -178,31 +186,39 @@ function Match2Round({
         </div>
         <button
           type="button"
-          className="min-h-12 shrink-0 rounded-2xl bg-[var(--accent)] px-3 py-3 text-sm font-bold text-[var(--accent-fg)] shadow-md active:scale-95"
-          onClick={onNewGame}
+          disabled={paused}
+          className="min-h-12 shrink-0 rounded-2xl bg-[var(--accent)] px-3 py-3 text-sm font-bold text-[var(--accent-fg)] shadow-md active:scale-95 disabled:opacity-50"
+          onClick={() => {
+            if (paused) return;
+            onNewGame();
+          }}
         >
           New game
         </button>
       </div>
 
       <div
-        className="grid w-full max-w-md grid-cols-3 gap-2"
+        className="grid w-full max-w-md gap-2"
         role="group"
         aria-label="Difficulty"
+        style={{
+          gridTemplateColumns: `repeat(${levels.length}, minmax(0, 1fr))`,
+        }}
       >
-        {DIFFICULTIES.map((id) => (
+        {levels.map((id) => (
           <button
             key={id}
             type="button"
             aria-pressed={difficulty === id}
+            disabled={paused}
             className={cn(
-              "flex min-h-12 items-center justify-center rounded-2xl border-4 px-2 py-2 text-sm font-black shadow-sm active:scale-[0.99]",
+              "flex min-h-12 items-center justify-center rounded-2xl border-4 px-2 py-2 text-sm font-black shadow-sm active:scale-[0.99] disabled:opacity-50",
               difficulty === id
                 ? "border-emerald-300 bg-emerald-100 text-emerald-950"
                 : "border-white/70 bg-white/80 text-[var(--ink)]",
             )}
             onClick={() => {
-              if (id === difficulty) return;
+              if (paused || id === difficulty) return;
               onDifficultyChange(id);
             }}
           >

@@ -40,6 +40,22 @@ export function difficultyConfig(difficulty: Difficulty): DifficultyConfig {
   }
 }
 
+export function visibleDifficulties(available: number): Difficulty[] {
+  const fits = DIFFICULTIES.filter(
+    (id) => available >= difficultyConfig(id).pairCount,
+  );
+  return fits.length > 0 ? fits : [DEFAULT_DIFFICULTY];
+}
+
+export function resolveDifficulty(
+  requested: Difficulty,
+  available: number,
+): Difficulty {
+  const visible = visibleDifficulties(available);
+  if (visible.includes(requested)) return requested;
+  return visible[visible.length - 1] ?? DEFAULT_DIFFICULTY;
+}
+
 export function shuffle<T>(arr: T[], random: () => number = Math.random): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -54,11 +70,10 @@ export function buildDeck(
   difficulty: Difficulty,
   random: () => number = Math.random,
 ): Card[] {
-  const { pairCount } = difficultyConfig(difficulty);
+  const resolved = resolveDifficulty(difficulty, pairs.length);
+  const wanted = difficultyConfig(resolved).pairCount;
+  const pairCount = Math.min(wanted, Math.max(0, pairs.length));
   const picks = pairs.slice(0, pairCount);
-  if (picks.length < pairCount) {
-    throw new Error(`Need ${pairCount} pair kinds, got ${picks.length}`);
-  }
   const cards = picks.flatMap((pair, i) => [
     {
       uid: i * 2,

@@ -8,6 +8,8 @@ import {
   DIFFICULTIES,
   buildDeck,
   difficultyConfig,
+  resolveDifficulty,
+  visibleDifficulties,
 } from "./deck.ts";
 import { match2Art } from "./art.ts";
 
@@ -72,6 +74,27 @@ for (const profileId of ["keira", "luke"]) {
   assert.deepEqual(deckIds.sort(), [...currentEasyIds].sort());
 }
 
-assert.throws(() => buildDeck(fakePairs.slice(0, 5), "easy", () => 0));
+assert.deepEqual(visibleDifficulties(10), ["easy", "medium", "hard"]);
+assert.deepEqual(visibleDifficulties(8), ["easy", "medium"]);
+assert.deepEqual(visibleDifficulties(6), ["easy"]);
+assert.deepEqual(visibleDifficulties(5), ["easy"]);
+assert.deepEqual(visibleDifficulties(0), ["easy"]);
+
+assert.equal(resolveDifficulty("hard", 10), "hard");
+assert.equal(resolveDifficulty("hard", 8), "medium");
+assert.equal(resolveDifficulty("hard", 6), "easy");
+assert.equal(resolveDifficulty("medium", 6), "easy");
+assert.equal(resolveDifficulty("easy", 5), "easy");
+
+const shortHard = buildDeck(fakePairs.slice(0, 8), "hard", () => 0);
+assert.equal(shortHard.length, 16);
+assert.equal(countByPair(shortHard).size, 8);
+
+const tooFewForEasy = buildDeck(fakePairs.slice(0, 5), "hard", () => 0);
+assert.equal(tooFewForEasy.length, 10);
+assert.equal(countByPair(tooFewForEasy).size, 5);
+
+const empty = buildDeck([], "hard", () => 0);
+assert.equal(empty.length, 0);
 
 console.log("deck.test.mjs: ok");
