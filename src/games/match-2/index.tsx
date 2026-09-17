@@ -226,22 +226,15 @@ function Match2Round({
       </button>
 
       <div className="relative w-full max-w-md shrink-0">
-        <div
-          className={cn(
-            "rounded-3xl px-4 py-3 text-center",
-            won ? "bg-emerald-200/95 shadow-md" : "invisible pointer-events-none",
-          )}
-          aria-hidden={!won}
-        >
-          <p className="text-xl font-black text-emerald-950">{art.win}</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-900">
-            {won
-              ? `${moves} moves · tap New game to play again`
-              : "88 moves · tap New game to play again"}
-          </p>
-        </div>
-        {won ? null : (
-          <p className="absolute inset-0 flex items-center justify-center px-2 text-center text-base font-black leading-snug text-[var(--ink)]">
+        {won ? (
+          <div className="rounded-3xl bg-emerald-200/95 px-4 py-3 text-center shadow-md">
+            <p className="text-xl font-black text-emerald-950">{art.win}</p>
+            <p className="mt-1 text-sm font-semibold text-emerald-900">
+              {moves} moves · tap New game to play again
+            </p>
+          </div>
+        ) : (
+          <p className="flex h-[4.5rem] items-center justify-center px-2 text-center text-base font-black leading-snug text-[var(--ink)]">
             {statusLine}
           </p>
         )}
