@@ -7,12 +7,18 @@ export type PairId =
   | "mermaid"
   | "crown"
   | "castle"
+  | "pearl"
+  | "blossom"
+  | "star"
+  | "gem"
   | "rocket"
   | "dino"
   | "bike"
   | "ball"
   | "robot"
-  | "fish";
+  | "fish"
+  | "car"
+  | "planet";
 
 export type MatchPair = {
   id: PairId;
@@ -48,6 +54,10 @@ const KEIRA: Match2Art = {
     { id: "mermaid", src: "/games/match-2/keira-mermaid.png", label: "Mermaid" },
     { id: "crown", src: "/games/match-2/keira-crown.png", label: "Crown" },
     { id: "castle", src: "/games/match-2/keira-castle.png", label: "Castle" },
+    { id: "pearl", src: "/games/match-2/keira-pearl.png", label: "Pearl" },
+    { id: "blossom", src: "/games/match-2/keira-blossom.png", label: "Blossom" },
+    { id: "star", src: "/games/match-2/keira-star.png", label: "Star" },
+    { id: "gem", src: "/games/match-2/keira-gem.png", label: "Gem" },
   ],
 };
 
@@ -67,6 +77,10 @@ const LUKE: Match2Art = {
     { id: "ball", src: "/games/match-2/luke-ball.png", label: "Ball" },
     { id: "robot", src: "/games/match-2/luke-robot.png", label: "Robot" },
     { id: "fish", src: "/games/match-2/luke-fish.png", label: "Fish" },
+    { id: "car", src: "/games/match-2/luke-car.png", label: "Car" },
+    { id: "planet", src: "/games/match-2/luke-planet.png", label: "Planet" },
+    { id: "star", src: "/games/match-2/luke-star.png", label: "Star" },
+    { id: "gem", src: "/games/match-2/luke-gem.png", label: "Gem" },
   ],
 };
 
