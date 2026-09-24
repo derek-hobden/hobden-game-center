@@ -48,6 +48,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profileId, setProfileId] = useState<ProfileId | null>(null);
   const [ready, setReady] = useState(false);
 
+  // localStorage is only readable after hydration, so the saved profile has
+  // to be applied from an effect (server render always starts "not ready").
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const saved = window.localStorage.getItem(PROFILE_STORAGE_KEY);
     if (saved === "keira" || saved === "luke") {
@@ -56,6 +59,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     }
     setReady(true);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const setProfile = useCallback((id: ProfileId) => {
     setProfileId(id);
