@@ -1,6 +1,6 @@
-# Hobden Game Center
+# Kids Game Center
 
-Installable PWA mini-game hub for **Keira** and **Luke**. Same games for both kids — profile switch only changes theme, art, and copy.
+Installable PWA mini-game hub for kids. Same games either way — picking a theme only changes art, colours, and copy.
 
 ## Stack
 
@@ -39,11 +39,11 @@ Optional CLI:
 npx vercel
 ```
 
-## Profiles
+## Themes
 
-| Profile | Theme |
+| Theme (internal id) | Look |
 | --- | --- |
-| Keira | Unicorns, rainbows, fairies, mermaids, princesses (original art — no Disney IP) |
-| Luke | Rockets, reefs, race tracks — boy-friendly counterpart pack |
+| Rainbows & Fairies (`keira`) | Unicorns, rainbows, fairies, mermaids, princesses (original art — no Disney IP) |
+| Rockets & Cars (`luke`) | Rockets, dinosaurs, space, race tracks |
 
 Choice is stored in `localStorage` only. No auth or database.

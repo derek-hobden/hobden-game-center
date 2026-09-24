@@ -22,9 +22,9 @@ export type ProfileTheme = {
 export const PROFILES: Record<ProfileId, ProfileTheme> = {
   keira: {
     id: "keira",
-    name: "Keira",
-    tagline: "Rainbow trails & fairy gardens",
-    greeting: "Hi Keira! Pick a game.",
+    name: "Rainbows & Fairies",
+    tagline: "Unicorns, sparkles & mermaids",
+    greeting: "Hi! Pick a game to play.",
     menuHint: "Big soft taps. Pause anytime.",
     accent: "#f472b6",
     accentFg: "#3b0a2a",
@@ -56,9 +56,9 @@ export const PROFILES: Record<ProfileId, ProfileTheme> = {
   },
   luke: {
     id: "luke",
-    name: "Luke",
-    tagline: "Rockets, reefs & race tracks",
-    greeting: "Hey Luke! Choose your mission.",
+    name: "Rockets & Cars",
+    tagline: "Dinosaurs, space & race tracks",
+    greeting: "Hi! Pick a game to play.",
     menuHint: "Tap big buttons. Pause anytime.",
     accent: "#0ea5e9",
     accentFg: "#042f4a",

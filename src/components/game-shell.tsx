@@ -172,7 +172,7 @@ export function GameShell({ gameId }: { gameId: string }) {
         <p className="text-6xl" aria-hidden>
           🎮
         </p>
-        <p className="brand-mark text-2xl font-black">Hobden Game Center</p>
+        <p className="brand-mark text-2xl font-black">Kids Game Center</p>
         <h1 className="text-2xl font-black text-[var(--ink)]">Game not found</h1>
         <p className="max-w-md text-base text-[var(--ink)]/75">
           That game isn’t on the shelf. Pick another from the menu.

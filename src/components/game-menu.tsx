@@ -31,13 +31,13 @@ export function GameMenu() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[11px] font-black uppercase tracking-[0.14em] text-[var(--ink)]/50">
-            Hobden Game Center
+            Kids Game Center
           </p>
           <h1 className="brand-mark text-3xl font-black leading-tight sm:text-4xl">
-            Hi {profile.name}!
+            Hi!
           </h1>
           <p className="text-sm font-bold text-[var(--ink)]/65 sm:text-base">
-            {profile.id === "keira" ? "Pick a game to play" : "Choose your mission"}
+            Pick a game to play
           </p>
         </div>
         <button
@@ -47,10 +47,10 @@ export function GameMenu() {
             clearProfile();
           }}
           className="kid-btn kid-btn-secondary min-h-12 shrink-0 px-3 text-sm"
-          aria-label="Switch player"
+          aria-label="Switch theme"
         >
           <Users className="size-5" strokeWidth={2.75} />
-          <span className="hidden sm:inline">Switch player</span>
+          <span className="hidden sm:inline">Switch theme</span>
           <span className="sm:hidden">Switch</span>
         </button>
       </header>
