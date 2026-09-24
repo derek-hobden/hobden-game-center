@@ -5,7 +5,7 @@ export function BrandLoading({ label }: { label?: string }) {
         🎮
       </div>
       <p className="brand-mark text-4xl font-black leading-none">
-        Hobden
+        Kids
         <br />
         Game Center
       </p>

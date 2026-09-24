@@ -1,7 +1,7 @@
 {
-  "name": "Hobden Game Center",
-  "short_name": "Hobden Games",
-  "description": "Mini-games for Keira and Luke — installable PWA.",
+  "name": "Kids Game Center",
+  "short_name": "Kids Games",
+  "description": "Mini-games for kids — installable PWA.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

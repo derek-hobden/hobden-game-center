@@ -34,12 +34,12 @@ export function ProfilePicker() {
           Welcome to
         </p>
         <p className="brand-mark mt-1 text-5xl font-black leading-[0.95] tracking-tight sm:text-7xl">
-          Hobden
+          Kids
           <br />
           Game Center
         </p>
         <h1 className="mt-4 text-2xl font-black text-[var(--ink)] sm:text-3xl">
-          Who’s playing?
+          Which theme do you want?
         </h1>
       </header>
 
@@ -80,7 +80,7 @@ export function ProfilePicker() {
                 style={{ animationDelay: `${i * -2}s` }}
               />
               <span className="relative w-full rounded-[1.4rem] bg-white/90 px-3 py-2.5 shadow-lg backdrop-blur">
-                <span className="block text-3xl font-black leading-none text-[var(--ink)] sm:text-4xl">
+                <span className="block text-2xl font-black leading-tight text-[var(--ink)] sm:text-4xl">
                   {p.name}
                 </span>
                 <span className="mt-1 block text-xs font-bold leading-snug text-[var(--ink)]/65 sm:text-sm">

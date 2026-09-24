@@ -12,15 +12,15 @@ const fredoka = Fredoka({
 
 export const metadata: Metadata = {
   title: {
-    default: "Hobden Game Center",
-    template: "%s · Hobden Game Center",
+    default: "Kids Game Center",
+    template: "%s · Kids Game Center",
   },
   description:
-    "Installable mini-games for Keira and Luke — same games, different themes.",
-  applicationName: "Hobden Game Center",
+    "Installable mini-games for kids — same games, two themes to choose from.",
+  applicationName: "Kids Game Center",
   appleWebApp: {
     capable: true,
-    title: "Hobden Game Center",
+    title: "Kids Game Center",
     statusBarStyle: "default",
   },
   icons: {
