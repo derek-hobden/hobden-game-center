@@ -1,0 +1,226 @@
+.board {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.tile {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+.cover {
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.22),
+    0 2px 3px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 90ms ease-out,
+    filter 90ms ease-out;
+}
+
+.tile:active .cover,
+.cover.pressing {
+  transform: scale(0.9);
+  filter: brightness(1.12);
+}
+
+.coverOff {
+  animation: cover-off 300ms cubic-bezier(0.45, 0, 0.8, 0.6) both;
+  pointer-events: none;
+}
+
+@keyframes cover-off {
+  0% {
+    transform: none;
+    opacity: 1;
+  }
+  35% {
+    transform: scale(1.12) translateY(-6%);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.4) translateY(-40%) rotate(14deg);
+    opacity: 0;
+  }
+}
+
+.popIn {
+  animation: pop-in 380ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.plant {
+  animation: plant 360ms cubic-bezier(0.3, 1.5, 0.5, 1) both;
+  transform-origin: 50% 90%;
+}
+
+@keyframes plant {
+  0% {
+    transform: translateY(-55%) scale(0.5);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(4%) scale(1.08, 0.92);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.hazardIn {
+  animation: hazard-in 520ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+@keyframes hazard-in {
+  0% {
+    transform: scale(0) rotate(-30deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.18) rotate(6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.hitBurst {
+  animation: hit-burst 700ms ease-out both;
+}
+
+@keyframes hit-burst {
+  0% {
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.9);
+  }
+  100% {
+    box-shadow: 0 0 0 16px rgba(244, 63, 94, 0);
+  }
+}
+
+.shake {
+  animation: shake 420ms ease-in-out;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translateX(-7px) rotate(-0.6deg);
+  }
+  40% {
+    transform: translateX(6px) rotate(0.5deg);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+.celebrate {
+  animation: celebrate 900ms ease-in-out 2;
+}
+
+@keyframes celebrate {
+  0%,
+  100% {
+    transform: none;
+  }
+  30% {
+    transform: scale(1.025) rotate(-0.6deg);
+  }
+  60% {
+    transform: scale(1.01) rotate(0.5deg);
+  }
+}
+
+.confetti {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 12px;
+  height: 16px;
+  border-radius: 3px;
+  pointer-events: none;
+  animation: confetti 1500ms cubic-bezier(0.15, 0.6, 0.35, 1) both;
+}
+
+@keyframes confetti {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+      scale(1) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+.hintBubble {
+  animation: bob 1.8s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.holdRing {
+  animation: hold-ring 340ms linear both;
+}
+
+@keyframes hold-ring {
+  from {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coverOff,
+  .popIn,
+  .plant,
+  .hazardIn,
+  .hitBurst,
+  .shake,
+  .celebrate,
+  .confetti,
+  .hintBubble,
+  .holdRing {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

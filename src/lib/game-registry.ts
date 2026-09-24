@@ -48,7 +48,7 @@ export const GAME_REGISTRY: GameMeta[] = [
     id: "minesweeper",
     title: "Minesweeper",
     ages: "4+",
-    controlHint: "Tap to open, use Flag mode",
+    controlHint: "Tap to dig, hold to flag",
     blurb: "Find safe squares. Flag the danger.",
     status: "ready",
     accent: "#fbbf24",

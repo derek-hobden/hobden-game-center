@@ -98,3 +98,22 @@ const empty = buildDeck([], "hard", () => 0);
 assert.equal(empty.length, 0);
 
 console.log("deck.test.mjs: ok");
+
+// Layout + rating helpers
+import { bestColumns, gridLayout, starRating } from "./deck.ts";
+assert.equal(bestColumns(12, 358, 640, 8, 3), 3);
+assert.equal(bestColumns(20, 358, 640, 8, 4), 4);
+assert.ok(bestColumns(12, 1000, 560, 8, 3) >= 4);
+assert.equal(bestColumns(20, 1000, 560, 8, 4), 5);
+{
+  const l = gridLayout(12, 358, 640, 8, 3);
+  assert.equal(l.cols * l.rows, 12);
+  assert.ok(l.cardH >= l.cardW, "portrait phone gets tall cards");
+  assert.ok(l.cols * l.cardW + (l.cols - 1) * 8 <= 358 + 0.01);
+  assert.ok(l.rows * l.cardH + (l.rows - 1) * 8 <= 640 + 0.01);
+}
+assert.equal(starRating(6, 6), 3);
+assert.equal(starRating(9, 6), 3);
+assert.equal(starRating(12, 6), 2);
+assert.equal(starRating(40, 6), 1);
+console.log("deck.test.mjs layout: ok");

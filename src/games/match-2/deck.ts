@@ -92,3 +92,70 @@ export function buildDeck(
   ]);
   return shuffle(cards, random);
 }
+
+export const CARD_ASPECT_MIN = 0.66; // tallest card (w/h)
+export const CARD_ASPECT_MAX = 1; // squarest card
+
+export type GridLayout = {
+  cols: number;
+  rows: number;
+  cardW: number;
+  cardH: number;
+};
+
+/**
+ * Pick the grid that gives the biggest cards for `count` cards inside a W×H
+ * box (with `gap` px between cards). Cards may be square or a little taller
+ * than wide (like real playing cards). Only full grids are considered.
+ * `preferred` columns win near-ties.
+ */
+export function gridLayout(
+  count: number,
+  width: number,
+  height: number,
+  gap: number,
+  preferred: number,
+): GridLayout {
+  const fallback: GridLayout = {
+    cols: preferred,
+    rows: Math.max(1, Math.ceil(count / preferred)),
+    cardW: 1,
+    cardH: 1,
+  };
+  if (count <= 0 || width <= 0 || height <= 0) return fallback;
+  let best = fallback;
+  let bestScore = -1;
+  for (let cols = 2; cols <= Math.min(count, 10); cols++) {
+    const rows = Math.ceil(count / cols);
+    if (rows * cols !== count) continue;
+    const w = (width - gap * (cols - 1)) / cols;
+    const h = (height - gap * (rows - 1)) / rows;
+    if (w <= 0 || h <= 0) continue;
+    const cardW = Math.min(w, h * CARD_ASPECT_MAX);
+    const cardH = Math.min(h, cardW / CARD_ASPECT_MIN);
+    const area = cardW * cardH * (cols === preferred ? 1.04 : 1);
+    if (area > bestScore) {
+      bestScore = area;
+      best = { cols, rows, cardW, cardH };
+    }
+  }
+  return best;
+}
+
+/** Column count from `gridLayout` (kept for callers that only need columns). */
+export function bestColumns(
+  count: number,
+  width: number,
+  height: number,
+  gap: number,
+  preferred: number,
+): number {
+  return gridLayout(count, width, height, gap, preferred).cols;
+}
+
+/** 3 stars for a sharp memory, never fewer than 1. */
+export function starRating(moves: number, pairs: number): 1 | 2 | 3 {
+  if (moves <= Math.ceil(pairs * 1.5)) return 3;
+  if (moves <= Math.ceil(pairs * 2.25)) return 2;
+  return 1;
+}
