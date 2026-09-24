@@ -2,10 +2,17 @@ import type { ProfileId } from "@/lib/profiles";
 
 export type PieceKind = "i" | "o" | "t" | "l" | "j" | "s" | "z";
 
+/** Order matches the tile sprite sheet (`<prefix>-tiles.webp`, 7 × 128px). */
 export const PIECE_KINDS: PieceKind[] = ["i", "o", "t", "l", "j", "s", "z"];
 
+/** Square matrices so rotation spins around the piece's middle. */
 export const SHAPES: Record<PieceKind, number[][]> = {
-  i: [[1, 1, 1, 1]],
+  i: [
+    [0, 0, 0, 0],
+    [1, 1, 1, 1],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ],
   o: [
     [1, 1],
     [1, 1],
@@ -13,32 +20,40 @@ export const SHAPES: Record<PieceKind, number[][]> = {
   t: [
     [0, 1, 0],
     [1, 1, 1],
+    [0, 0, 0],
   ],
   l: [
-    [1, 0, 0],
-    [1, 1, 1],
-  ],
-  j: [
     [0, 0, 1],
     [1, 1, 1],
+    [0, 0, 0],
+  ],
+  j: [
+    [1, 0, 0],
+    [1, 1, 1],
+    [0, 0, 0],
   ],
   s: [
-    [1, 1, 0],
     [0, 1, 1],
+    [1, 1, 0],
+    [0, 0, 0],
   ],
   z: [
-    [0, 1, 1],
     [1, 1, 0],
+    [0, 1, 1],
+    [0, 0, 0],
   ],
 };
 
 export type TetrisPack = {
   prefix: "keira" | "luke";
-  yay: string;
-  lose: string;
-  hint: string;
-  nextLabel: string;
-  ghost: string;
+  emoji: string;
+  loseEmoji: string;
+  loseTitle: string;
+  rowWord: string;
+  cheers: string[];
+  wellTop: string;
+  wellBottom: string;
+  accentGlow: string;
 };
 
 export function tetrisPack(profileId: ProfileId): TetrisPack {
@@ -46,20 +61,26 @@ export function tetrisPack(profileId: ProfileId): TetrisPack {
     case "keira":
       return {
         prefix: "keira",
-        yay: "Yay! Sparkle row!",
-        lose: "Castle full — build again!",
-        hint: "Swipe the well or tap the big buttons.",
-        nextLabel: "Next gem",
-        ghost: "rgba(255,255,255,0.35)",
+        emoji: "🏰",
+        loseEmoji: "🦄",
+        loseTitle: "Castle's full!",
+        rowWord: "sparkle rows",
+        cheers: ["Sparkle!", "Double magic!", "Triple twinkle!", "RAINBOW!"],
+        wellTop: "rgba(88, 40, 120, 0.50)",
+        wellBottom: "rgba(56, 18, 84, 0.72)",
+        accentGlow: "255, 150, 220",
       };
     case "luke":
       return {
         prefix: "luke",
-        yay: "Yay! Stack cleared!",
-        lose: "Hangar full — stack again!",
-        hint: "Swipe the well or tap the big buttons.",
-        nextLabel: "Next block",
-        ghost: "rgba(255,255,255,0.32)",
+        emoji: "🚀",
+        loseEmoji: "🦖",
+        loseTitle: "Hangar's full!",
+        rowWord: "rows",
+        cheers: ["Boom!", "Double blast!", "Triple turbo!", "MEGA ROCKET!"],
+        wellTop: "rgba(8, 20, 48, 0.45)",
+        wellBottom: "rgba(4, 10, 30, 0.72)",
+        accentGlow: "120, 210, 255",
       };
     default: {
       const _never: never = profileId;
@@ -68,46 +89,34 @@ export function tetrisPack(profileId: ProfileId): TetrisPack {
   }
 }
 
-export function blockSrc(prefix: TetrisPack["prefix"], kind: PieceKind): string {
-  return `/games/tetris/${prefix}-${kind}.png`;
+export function tilesSrc(prefix: TetrisPack["prefix"]): string {
+  return `/games/tetris/${prefix}-tiles.webp`;
 }
 
 export function bgSrc(prefix: TetrisPack["prefix"]): string {
-  return `/games/tetris/${prefix}-bg.png`;
-}
-
-export function cardSrc(prefix: TetrisPack["prefix"]): string {
-  return `/games/tetris/${prefix}-card.png`;
+  return `/games/tetris/${prefix}-bg.jpg`;
 }
 
 export const TETRIS_COLS = 10;
-export const TETRIS_ROWS = 14;
-export const TETRIS_MAX_CELL = 52;
+export const TETRIS_ROWS = 16;
 
-/** Fit uniform cell size; may go below 22px if the stage is very small (no distortion). */
-export function fitTetrisCellSize(width: number, height: number): number {
-  if (width < 1 || height < 1) return 22;
-  const byW = Math.floor(width / TETRIS_COLS);
-  const byH = Math.floor(height / TETRIS_ROWS);
-  return Math.max(1, Math.min(TETRIS_MAX_CELL, byW, byH));
-}
-
+/** Colour roughly matching each tile, for particles and fallbacks. */
 export function kindFill(kind: PieceKind, isKeira: boolean): string {
   switch (kind) {
     case "i":
-      return isKeira ? "#7dd3fc" : "#38bdf8";
+      return isKeira ? "#f472b6" : "#38bdf8";
     case "o":
-      return isKeira ? "#f9a8d4" : "#4ade80";
+      return isKeira ? "#d8b4fe" : "#4ade80";
     case "t":
       return isKeira ? "#fcd34d" : "#fb923c";
     case "l":
-      return isKeira ? "#c4b5fd" : "#a78bfa";
+      return isKeira ? "#c4b5fd" : "#8b5cf6";
     case "j":
-      return isKeira ? "#67e8f9" : "#facc15";
+      return isKeira ? "#5eead4" : "#facc15";
     case "s":
       return isKeira ? "#86efac" : "#2dd4bf";
     case "z":
-      return isKeira ? "#fda4af" : "#fb7185";
+      return isKeira ? "#fdba74" : "#f87171";
     default: {
       const _never: never = kind;
       return _never;
