@@ -1,6 +1,7 @@
 import type { ProfileId } from "@/lib/profiles";
 
-export const RANKS = ["A", "2", "3", "4", "5", "6", "7"] as const;
+/** Kids count 1–7 instead of A–7. */
+export const RANKS = ["1", "2", "3", "4", "5", "6", "7"] as const;
 
 export const KEIRA_SUIT_NAMES = ["Blossom", "Gem", "Moon", "Star"] as const;
 export const LUKE_SUIT_NAMES = ["Rocket", "Dino", "Bike", "Ball"] as const;
@@ -57,32 +58,44 @@ export function suitSrc(profileId: ProfileId, suit: number): string {
   const safe = Math.max(0, Math.min(3, suit));
   switch (profileId) {
     case "keira":
-      return `/games/solitaire/keira-suit-${safe}.jpg`;
+      return `/games/solitaire/keira-suit-${safe}-cut.png`;
     case "luke":
-      return `/games/solitaire/luke-suit-${safe}.jpg`;
+      return `/games/solitaire/luke-suit-${safe}-cut.png`;
     default:
       return assertNever(profileId);
   }
 }
 
-export function rankTone(profileId: ProfileId, suit: number): string {
+/** Rank colour by "team" (suits alternate teams, like red/black). */
+export function rankColor(profileId: ProfileId, suit: number): string {
   const even = suit % 2 === 0;
   switch (profileId) {
     case "keira":
-      return even ? "text-[#c02677]" : "text-[#6d28d9]";
+      return even ? "#d6247a" : "#6d28d9";
     case "luke":
-      return even ? "text-[#0369a1]" : "text-[#b45309]";
+      return even ? "#0369a1" : "#c2410c";
     default:
       return assertNever(profileId);
   }
 }
 
-export function hintCopy(profileId: ProfileId): string {
+export function teamNames(profileId: ProfileId): [string, string] {
   switch (profileId) {
     case "keira":
-      return "Tap a card, then a glowing nest. Double-tap sends it home.";
+      return ["pink", "purple"];
     case "luke":
-      return "Tap a card, then a glowing pad. Double-tap sends it home.";
+      return ["blue", "orange"];
+    default:
+      return assertNever(profileId);
+  }
+}
+
+export function homeWord(profileId: ProfileId): string {
+  switch (profileId) {
+    case "keira":
+      return "nests";
+    case "luke":
+      return "launch pads";
     default:
       return assertNever(profileId);
   }

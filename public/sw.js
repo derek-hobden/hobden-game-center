@@ -1,5 +1,5 @@
 /* Hobden Game Center — offline shell service worker */
-const CACHE = "hobden-game-center-v2";
+const CACHE = "hobden-game-center-v3";
 const PRECACHE = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
