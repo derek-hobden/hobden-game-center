@@ -1,6 +1,16 @@
 /* Hobden Game Center — offline shell service worker */
-const CACHE = "hobden-game-center-v3";
-const PRECACHE = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
+const CACHE = "hobden-game-center-v4";
+const PRECACHE = [
+  "/",
+  "/manifest.webmanifest",
+  "/favicon.ico",
+  "/apple-touch-icon.png",
+  "/icons/icon-32.png",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/icons/icon-maskable-192.png",
+  "/icons/icon-maskable-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
