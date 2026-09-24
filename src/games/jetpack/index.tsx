@@ -1,70 +1,45 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { GameProps } from "@/lib/game-registry";
 import { PROFILES, type ProfileId } from "@/lib/profiles";
+import { CanvasStage, GameOverlay, prepareCanvas } from "@/components/game-kit";
+import { getBest } from "@/lib/best-scores";
+import { haptic, sfx } from "@/lib/sfx";
+import {
+  H,
+  begin,
+  createState,
+  meters,
+  setHolding,
+  step,
+  type GameEvent,
+  type State,
+} from "./engine";
+import { draw, type Art } from "./draw";
 
-type Kind = "coin" | "rock";
+const MIN_W = 300;
+const MAX_W = 1100;
 
-type Obs = {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  kind: Kind;
-  taken: boolean;
-};
-
-type Pop = { x: number; y: number; life: number; text: string };
-type Spark = { x: number; y: number; vx: number; vy: number; life: number };
-
-type ArtPack = {
-  hero: string;
-  hazard: string;
-  coin: string;
-  bg: string;
-};
-
-type LoadedArt = {
-  hero: HTMLImageElement;
-  hazard: HTMLImageElement;
-  coin: HTMLImageElement;
-  bg: HTMLImageElement;
-};
-
-const W = 360;
-const H = 480;
-const PLAYER_X = 78;
-const GRAVITY = 0.2;
-const BOOST = -0.42;
-const MAX_V = 4.4;
-const BASE_SPEED = 2.15;
-const MAX_SPEED = 3.35;
-const FIRST_SPAWN_MS = 1700;
-const SPAWN_MS = 1050;
-const GRACE_FRAMES = 70;
-const CEIL = 44;
-const FLOOR = H - 44;
-
-function artFor(profileId: ProfileId): ArtPack {
+function artFor(profileId: ProfileId) {
   switch (profileId) {
     case "keira":
       return {
-        hero: "/games/jetpack/keira-hero.png?v=2",
-        hazard: "/games/jetpack/keira-hazard.png?v=2",
-        coin: "/games/jetpack/keira-coin.png?v=2",
-        bg: "/games/jetpack/keira-bg.jpg?v=2",
+        hero: "/games/jetpack/keira-hero.png",
+        hazard: "/games/jetpack/keira-hazard.png",
+        coin: "/games/jetpack/keira-coin.png",
+        bg: "/games/jetpack/keira-bg.jpg",
       };
     case "luke":
       return {
-        hero: "/games/jetpack/luke-hero.png?v=2",
-        hazard: "/games/jetpack/luke-hazard.png?v=2",
-        coin: "/games/jetpack/luke-coin.png?v=2",
-        bg: "/games/jetpack/luke-bg.jpg?v=2",
+        hero: "/games/jetpack/luke-hero.png",
+        hazard: "/games/jetpack/luke-hazard.png",
+        coin: "/games/jetpack/luke-coin.png",
+        bg: "/games/jetpack/luke-bg.jpg",
       };
     default: {
-      const _exhaustive: never = profileId;
-      throw new Error(`Unhandled profile: ${_exhaustive}`);
+      const _never: never = profileId;
+      return _never;
     }
   }
 }
@@ -73,401 +48,308 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Failed to load ${src}`));
+    img.onerror = () => reject(new Error(src));
     img.src = src;
   });
 }
 
-function hit(
-  ax: number,
-  ay: number,
-  ar: number,
-  bx: number,
-  by: number,
-  br: number,
-): boolean {
-  const dx = ax - bx;
-  const dy = ay - by;
-  const r = ar + br;
-  return dx * dx + dy * dy < r * r;
+function useStageWidth(ref: React.RefObject<HTMLDivElement | null>) {
+  const [w, setW] = useState(420);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return;
+      const next =
+        Math.round(Math.min(MAX_W, Math.max(MIN_W, (H * r.width) / r.height)) / 2) * 2;
+      setW((prev) => (prev === next ? prev : next));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return w;
 }
 
-function spriteFor(kind: Kind, art: LoadedArt): HTMLImageElement {
-  switch (kind) {
-    case "coin":
-      return art.coin;
-    case "rock":
-      return art.hazard;
-    default: {
-      const _exhaustive: never = kind;
-      throw new Error(`Unhandled kind: ${_exhaustive}`);
-    }
-  }
-}
+type UiPhase = "loading" | "ready" | "play" | "over";
 
 export default function JetpackGame({
   profileId,
   paused,
   onScoreChange,
 }: GameProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const y = useRef(H / 2);
-  const vy = useRef(0);
-  const holding = useRef(false);
-  const dist = useRef(0);
-  const obs = useRef<Obs[]>([]);
-  const pops = useRef<Pop[]>([]);
-  const sparks = useRef<Spark[]>([]);
-  const bgX = useRef(0);
-  const grace = useRef(GRACE_FRAMES);
-  const shake = useRef(0);
+  const W = useStageWidth(rootRef);
+  const stateRef = useRef<State | null>(null);
+  const artRef = useRef<Art | null>(null);
   const pausedRef = useRef(paused);
-  const overRef = useRef(false);
-  const artRef = useRef<LoadedArt | null>(null);
-  const scoreRef = useRef(0);
   const onScoreRef = useRef(onScoreChange);
-  const [score, setScore] = useState(0);
-  const [over, setOver] = useState(false);
-  const [artReady, setArtReady] = useState(false);
-  const [artError, setArtError] = useState(false);
+  const pointers = useRef(new Set<number>());
+  const keyDown = useRef(false);
+  const bestAtStart = useRef(0);
+  const overLockUntil = useRef(0);
+  const [ui, setUi] = useState<UiPhase>("loading");
+  const [result, setResult] = useState({ score: 0, meters: 0, coins: 0, best: false });
   const theme = PROFILES[profileId];
-  const isKeira = profileId === "keira";
 
-  const bumpScore = useCallback((n: number) => {
-    scoreRef.current = n;
-    setScore(n);
-    onScoreRef.current?.(n);
+  const getState = useCallback(() => {
+    if (!stateRef.current) stateRef.current = createState(W, profileId);
+    return stateRef.current;
+  }, [W, profileId]);
+
+  const syncHold = useCallback(() => {
+    const s = stateRef.current;
+    if (!s) return;
+    setHolding(s, !pausedRef.current && (pointers.current.size > 0 || keyDown.current));
   }, []);
-
-  const reset = useCallback(() => {
-    y.current = H / 2;
-    vy.current = 0;
-    holding.current = false;
-    dist.current = 0;
-    obs.current = [];
-    pops.current = [];
-    sparks.current = [];
-    bgX.current = 0;
-    grace.current = GRACE_FRAMES;
-    shake.current = 0;
-    scoreRef.current = 0;
-    bumpScore(0);
-    setOver(false);
-    overRef.current = false;
-  }, [bumpScore]);
 
   useEffect(() => {
     pausedRef.current = paused;
-  }, [paused]);
-
-  useEffect(() => {
-    overRef.current = over;
-  }, [over]);
-
+    if (paused) {
+      pointers.current.clear();
+      keyDown.current = false;
+    }
+    syncHold();
+  }, [paused, syncHold]);
   useEffect(() => {
     onScoreRef.current = onScoreChange;
   }, [onScoreChange]);
+  useEffect(() => {
+    getState().W = W;
+  }, [W, getState]);
 
   useEffect(() => {
     let cancelled = false;
-    const pack = artFor(profileId);
-    Promise.all([
-      loadImage(pack.hero),
-      loadImage(pack.hazard),
-      loadImage(pack.coin),
-      loadImage(pack.bg),
-    ])
+    const u = artFor(profileId);
+    Promise.all([loadImage(u.hero), loadImage(u.hazard), loadImage(u.coin), loadImage(u.bg)])
       .then(([hero, hazard, coin, bg]) => {
         if (cancelled) return;
         artRef.current = { hero, hazard, coin, bg };
-        y.current = H / 2;
-        vy.current = 0;
-        holding.current = false;
-        dist.current = 0;
-        obs.current = [];
-        pops.current = [];
-        sparks.current = [];
-        bgX.current = 0;
-        grace.current = GRACE_FRAMES;
-        shake.current = 0;
-        scoreRef.current = 0;
-        bumpScore(0);
-        setOver(false);
-        overRef.current = false;
-        setArtError(false);
-        setArtReady(true);
+        setUi((x) => (x === "loading" ? "ready" : x));
       })
       .catch(() => {
-        if (!cancelled) setArtError(true);
+        if (!cancelled) setUi((x) => (x === "loading" ? "ready" : x));
       });
     return () => {
       cancelled = true;
     };
-  }, [profileId, bumpScore]);
+  }, [profileId]);
+
+  const start = useCallback(() => {
+    const s = getState();
+    if (s.phase !== "ready" || ui === "loading") return;
+    bestAtStart.current = getBest(profileId, "jetpack");
+    begin(s);
+    sfx("zap", { pitch: 1.4 });
+    setUi("play");
+    syncHold();
+  }, [getState, profileId, ui, syncHold]);
+
+  const restart = useCallback(() => {
+    if (performance.now() < overLockUntil.current) return;
+    sfx("tap");
+    stateRef.current = createState(W, profileId);
+    onScoreRef.current?.(0);
+    pointers.current.clear();
+    keyDown.current = false;
+    setUi("ready");
+  }, [W, profileId]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code !== "Space" && e.key !== "ArrowUp") return;
+    const isKey = (e: KeyboardEvent) =>
+      e.code === "Space" || e.key === "ArrowUp" || e.key === "w" || e.key === "W";
+    const down = (e: KeyboardEvent) => {
+      if (!isKey(e)) return;
       e.preventDefault();
-      if (overRef.current) return;
-      holding.current = e.type === "keydown";
+      if (e.repeat) return;
+      const s = getState();
+      if (s.phase === "over") {
+        restart();
+        return;
+      }
+      keyDown.current = true;
+      if (s.phase === "ready") start();
+      syncHold();
     };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("keyup", onKey);
+    const up = (e: KeyboardEvent) => {
+      if (!isKey(e)) return;
+      keyDown.current = false;
+      syncHold();
+    };
+    const releaseAll = () => {
+      pointers.current.clear();
+      keyDown.current = false;
+      syncHold();
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", releaseAll);
     return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("keyup", onKey);
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", releaseAll);
     };
-  }, []);
+  }, [getState, restart, start, syncHold]);
 
+  // Main loop.
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    const font = getComputedStyle(document.body).fontFamily || "system-ui, sans-serif";
     let raf = 0;
-    let spawnAt = 0;
-    let lastTs = 0;
+    let last = 0;
+    let coinSfxAt = 0;
 
-    const draw = () => {
-      const art = artRef.current;
-      const sx = (Math.random() - 0.5) * shake.current;
-      const sy = (Math.random() - 0.5) * shake.current;
-      ctx.save();
-      ctx.translate(sx, sy);
-
-      if (art) {
-        const tileW = (art.bg.width / art.bg.height) * H;
-        let x = -((bgX.current % tileW) + tileW) % tileW;
-        while (x < W) {
-          ctx.drawImage(art.bg, x, 0, tileW, H);
-          x += tileW;
+    const handle = (ev: GameEvent, s: State, ts: number) => {
+      switch (ev) {
+        case "coin":
+          // Rising pitch while a coin streak continues; throttled so trails
+          // of coins don't turn into noise.
+          if (ts - coinSfxAt > 45) {
+            coinSfxAt = ts;
+            sfx("coin", { pitch: 1 + Math.min(0.8, s.combo * 0.04) });
+          }
+          onScoreRef.current?.(s.score);
+          break;
+        case "milestone":
+          sfx("levelUp");
+          onScoreRef.current?.(s.score);
+          break;
+        case "shield":
+        case "heart":
+          sfx("star");
+          break;
+        case "shieldPop":
+          sfx("pop");
+          haptic(30);
+          break;
+        case "hit":
+          sfx("hit");
+          haptic(50);
+          break;
+        case "die":
+          sfx("boom");
+          haptic(90);
+          break;
+        case "warn":
+          sfx("tap", { pitch: 1.8 });
+          break;
+        case "launch":
+          sfx("zap", { pitch: 0.8 });
+          break;
+        case "land":
+          sfx("drop");
+          break;
+        case "over":
+          break;
+        default: {
+          const _never: never = ev;
+          return _never;
         }
-      } else {
-        const g = ctx.createLinearGradient(0, 0, 0, H);
-        g.addColorStop(0, theme.skyFrom);
-        g.addColorStop(1, theme.skyTo);
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, W, H);
       }
-
-      const rim = ctx.createLinearGradient(0, 0, 0, H);
-      rim.addColorStop(0, isKeira ? "rgba(244,114,182,0.35)" : "rgba(15,23,42,0.4)");
-      rim.addColorStop(0.08, "rgba(0,0,0,0)");
-      rim.addColorStop(0.92, "rgba(0,0,0,0)");
-      rim.addColorStop(1, isKeira ? "rgba(251,113,133,0.4)" : "rgba(15,23,42,0.45)");
-      ctx.fillStyle = rim;
-      ctx.fillRect(0, 0, W, H);
-
-      for (const s of sparks.current) {
-        ctx.globalAlpha = Math.max(0, s.life / 18);
-        ctx.fillStyle = isKeira ? "#f9a8d4" : "#fbbf24";
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-
-      if (art) {
-        for (const o of obs.current) {
-          if (o.taken) continue;
-          const img = spriteFor(o.kind, art);
-          const bob = o.kind === "coin" ? Math.sin(dist.current / 8 + o.y) * 3 : 0;
-          ctx.drawImage(img, o.x - o.w / 2, o.y - o.h / 2 + bob, o.w, o.h);
-        }
-        const tilt = holding.current && !overRef.current ? -0.18 : 0.12;
-        const flash = grace.current > 0 && Math.floor(grace.current / 6) % 2 === 0;
-        ctx.save();
-        ctx.translate(PLAYER_X, y.current);
-        ctx.rotate(tilt);
-        if (flash) ctx.globalAlpha = 0.55;
-        ctx.drawImage(art.hero, -52, -52, 104, 104);
-        ctx.restore();
-      }
-
-      for (const p of pops.current) {
-        ctx.globalAlpha = Math.max(0, p.life / 40);
-        ctx.fillStyle = "#3b1d4a";
-        ctx.font = "bold 18px system-ui";
-        ctx.fillText(p.text, p.x, p.y);
-        ctx.globalAlpha = 1;
-      }
-
-      if (grace.current > 40 && !overRef.current) {
-        ctx.fillStyle = "rgba(255,255,255,0.82)";
-        ctx.font = "bold 16px system-ui";
-        ctx.fillText("Get ready…", 128, 56);
-      }
-
-      ctx.restore();
     };
 
     const loop = (ts: number) => {
       raf = requestAnimationFrame(loop);
-      if (!lastTs) lastTs = ts;
-      lastTs = ts;
-
-      if (pausedRef.current) {
-        draw();
-        return;
+      const dt = last ? Math.min(1 / 30, (ts - last) / 1000) : 1 / 60;
+      last = ts;
+      const s = stateRef.current ?? getState();
+      if (process.env.NODE_ENV !== "production") {
+        // Lets the automated gameplay recordings peek at the world.
+        (window as unknown as { __jetpack?: State }).__jetpack = s;
       }
-
-      if (!overRef.current) {
-        if (grace.current > 0) grace.current -= 1;
-        vy.current += holding.current ? BOOST : GRAVITY;
-        vy.current = Math.max(-MAX_V, Math.min(MAX_V, vy.current));
-        y.current += vy.current;
-        if (y.current < CEIL) {
-          y.current = CEIL;
-          vy.current = Math.abs(vy.current) * 0.35;
-        }
-        if (y.current > FLOOR) {
-          y.current = FLOOR;
-          vy.current = -Math.abs(vy.current) * 0.35;
-        }
-
-        dist.current += 1;
-        const speed = Math.min(
-          MAX_SPEED,
-          BASE_SPEED + dist.current / 2800,
-        );
-        bgX.current += speed * 0.7;
-
-        if (spawnAt === 0) spawnAt = ts + FIRST_SPAWN_MS;
-        if (ts >= spawnAt) {
-          spawnAt = ts + SPAWN_MS;
-          const coin = Math.random() < 0.62;
-          const kind: Kind = coin ? "coin" : "rock";
-          const size = kind === "coin" ? 46 : 58;
-          const lane = CEIL + 20 + Math.random() * (FLOOR - CEIL - 40);
-          obs.current.push({
-            x: W + 36,
-            y: lane,
-            w: size,
-            h: size,
-            kind,
-            taken: false,
+      if (!pausedRef.current) {
+        step(s, dt);
+        for (const ev of s.events) handle(ev, s, ts);
+        s.events.length = 0;
+        if (s.phase === "over" && !s.overShown && s.deadT > 0.9) {
+          s.overShown = true;
+          sfx("lose");
+          overLockUntil.current = performance.now() + 500;
+          setResult({
+            score: s.score,
+            meters: meters(s),
+            coins: s.coinCount,
+            best: s.score > bestAtStart.current && s.score > 0,
           });
-        }
-
-        for (const o of obs.current) o.x -= speed;
-
-        const pr = 16;
-        for (const o of obs.current) {
-          if (o.taken) continue;
-          if (!hit(PLAYER_X, y.current, pr, o.x, o.y, 20)) continue;
-          if (o.kind === "coin") {
-            o.taken = true;
-            const n = scoreRef.current + 5;
-            bumpScore(n);
-            pops.current.push({
-              x: o.x - 8,
-              y: o.y,
-              life: 40,
-              text: "Yay! +5",
-            });
-          } else if (grace.current <= 0) {
-            setOver(true);
-            overRef.current = true;
-            shake.current = 8;
-            holding.current = false;
-          }
-        }
-
-        obs.current = obs.current.filter((o) => o.x > -70 && !o.taken);
-
-        if (holding.current) {
-          sparks.current.push({
-            x: PLAYER_X - 34,
-            y: y.current + 10,
-            vx: -2.2 - Math.random(),
-            vy: (Math.random() - 0.5) * 1.6,
-            life: 16,
-          });
-        }
-
-        if (dist.current % 55 === 0) {
-          bumpScore(scoreRef.current + 1);
+          setUi("over");
         }
       }
-
-      for (const p of pops.current) {
-        p.y -= 0.7;
-        p.life -= 1;
-      }
-      pops.current = pops.current.filter((p) => p.life > 0);
-      for (const s of sparks.current) {
-        s.x += s.vx;
-        s.y += s.vy;
-        s.life -= 1;
-      }
-      sparks.current = sparks.current.filter((s) => s.life > 0);
-      if (shake.current > 0) shake.current *= 0.86;
-
-      draw();
+      prepareCanvas(ctx, s.W);
+      draw(ctx, s, artRef.current, font, theme.ink);
     };
-
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [bumpScore, isKeira, theme.skyFrom, theme.skyTo, artReady]);
+  }, [getState, theme.ink]);
 
-  function setBoost(on: boolean) {
-    if (overRef.current) return;
-    holding.current = on;
-  }
+  const isKeira = profileId === "keira";
 
   return (
-    <div className="flex w-full flex-col items-center gap-3">
-      <div className="flex w-full max-w-md items-center justify-between gap-2 text-lg font-black text-[var(--ink)]">
-        <span>
-          {theme.gameNames.jetpack} · {score}
-        </span>
-        {over ? (
-          <button
-            type="button"
-            className="min-h-12 rounded-2xl bg-[var(--accent)] px-4 py-3 font-bold text-[var(--accent-fg)]"
-            onClick={reset}
-          >
-            Play again
-          </button>
-        ) : null}
-      </div>
-      {artError ? (
-        <p className="text-sm font-bold text-rose-700">
-          Pictures didn’t load. Try again in a moment.
-        </p>
-      ) : null}
-      <div
-        className="flex w-full max-w-md flex-col items-center gap-3"
-        onPointerDown={() => setBoost(true)}
-        onPointerUp={() => setBoost(false)}
-        onPointerCancel={() => setBoost(false)}
-        onPointerLeave={() => setBoost(false)}
-      >
-        <canvas
-          ref={canvasRef}
-          width={W}
-          height={H}
-          className="max-w-full touch-none rounded-3xl border-4 border-white/70 shadow-lg"
-          style={{ width: "min(100%, 360px)" }}
+    <div
+      ref={rootRef}
+      className="game-root touch-none select-none"
+      onPointerDown={(e) => {
+        if ((e.target as HTMLElement).closest("button")) return;
+        e.preventDefault();
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          // Capture is a nicety; holding still works without it.
+        }
+        const s = getState();
+        if (s.phase === "over" || pausedRef.current) return;
+        pointers.current.add(e.pointerId);
+        if (s.phase === "ready") start();
+        syncHold();
+      }}
+      onPointerUp={(e) => {
+        pointers.current.delete(e.pointerId);
+        syncHold();
+      }}
+      onPointerCancel={(e) => {
+        pointers.current.delete(e.pointerId);
+        syncHold();
+      }}
+      onLostPointerCapture={(e) => {
+        pointers.current.delete(e.pointerId);
+        syncHold();
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <CanvasStage width={W} height={H} canvasRef={canvasRef}>
+        <GameOverlay
+          show={ui === "ready"}
+          className="items-end bg-transparent pb-[10%] backdrop-blur-none"
+          emoji={isKeira ? "🧜‍♀️" : "🚀"}
+          title="Hold to fly!"
+          subtitle={`Hold anywhere to zoom up, let go to float down. Grab ${isKeira ? "stars" : "coins"} and dodge the ${isKeira ? "jellies" : "zappers"}!`}
+          actionLabel="Let's go!"
+          onAction={start}
         />
-        <button
-          type="button"
-          className="min-h-16 w-full rounded-3xl bg-[var(--accent)] text-xl font-black text-[var(--accent-fg)] shadow-md active:scale-95"
-        >
-          Hold to boost ↑
-        </button>
-      </div>
-      {over ? (
-        <p className="text-center font-bold text-rose-700">
-          {isKeira ? "Ouch, coral bump!" : "Ouch, rock bump!"} Score {score}.
-        </p>
-      ) : (
-        <p className="text-center text-sm text-[var(--ink)]/70">
-          Hold anywhere to fly up · walls bounce · grab{" "}
-          {isKeira ? "stars" : "coins"}
-        </p>
-      )}
+        <GameOverlay
+          show={ui === "over"}
+          tone={result.best ? "win" : "neutral"}
+          emoji={result.best ? "🏆" : isKeira ? "🐚" : "🪐"}
+          title={result.best ? "New best!" : "What a trip!"}
+          subtitle={
+            <>
+              <span className="block text-2xl font-black text-[var(--ink)]">
+                🏁 {result.meters} m
+              </span>
+              <span className="block">
+                {isKeira ? "⭐" : "🪙"} {result.coins} {isKeira ? "stars" : "coins"} · Score{" "}
+                {result.score}
+              </span>
+            </>
+          }
+          actionLabel="Play again"
+          onAction={restart}
+        />
+      </CanvasStage>
     </div>
   );
 }
