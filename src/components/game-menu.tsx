@@ -30,7 +30,7 @@ export function GameMenu() {
           <span className="float-slow inline-block">{profile.emoji}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--ink)]/50">
+          <p className="truncate text-[11px] font-black uppercase tracking-[0.14em] text-[var(--ink)]/50">
             Hobden Game Center
           </p>
           <h1 className="brand-mark text-3xl font-black leading-tight sm:text-4xl">
