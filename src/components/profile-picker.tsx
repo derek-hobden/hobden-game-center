@@ -52,7 +52,7 @@ export function ProfilePicker() {
               key={id}
               type="button"
               className={cn(
-                "profile-card menu-card group relative flex aspect-[3/4] flex-col items-center justify-end overflow-hidden rounded-[2rem] border-[6px] border-white p-4 text-center shadow-2xl sm:aspect-[4/5]",
+                "profile-card menu-card group relative flex aspect-[2/3] flex-col items-center justify-end overflow-hidden rounded-[2rem] border-[6px] border-white p-2.5 text-center shadow-2xl sm:aspect-[4/5] sm:p-4",
               )}
               style={{
                 background: hero.bg,
@@ -76,11 +76,11 @@ export function ProfilePicker() {
                 src={hero.img}
                 alt=""
                 draggable={false}
-                className="float-slow pointer-events-none absolute left-1/2 top-[8%] w-[78%] -translate-x-1/2 drop-shadow-[0_12px_14px_rgba(0,0,0,0.25)]"
+                className="float-slow pointer-events-none absolute left-1/2 top-[5%] h-[45%] w-auto max-w-[90%] -translate-x-1/2 object-contain sm:top-[8%] sm:h-auto sm:w-[78%] sm:max-w-none drop-shadow-[0_12px_14px_rgba(0,0,0,0.25)]"
                 style={{ animationDelay: `${i * -2}s` }}
               />
-              <span className="relative w-full rounded-[1.4rem] bg-white/90 px-3 py-2.5 shadow-lg backdrop-blur">
-                <span className="block text-2xl font-black leading-tight text-[var(--ink)] sm:text-4xl">
+              <span className="relative w-full rounded-[1.4rem] bg-white/90 px-2 py-2 shadow-lg backdrop-blur sm:px-3 sm:py-2.5">
+                <span className="block text-xl font-black leading-tight text-[var(--ink)] sm:text-4xl">
                   {p.name}
                 </span>
                 <span className="mt-1 block text-xs font-bold leading-snug text-[var(--ink)]/65 sm:text-sm">
