@@ -1,116 +1,141 @@
+/* eslint-disable @next/next/no-img-element -- tiny static card art, no LCP concern */
+import type { CSSProperties } from "react";
 import type { ProfileId } from "@/lib/profiles";
-import { cn } from "@/lib/utils";
-import { RANKS, backSrc, rankTone, suitName, suitSrc } from "./art";
+import { RANKS, backSrc, rankColor, suitName, suitSrc } from "./art";
+import type { Card } from "./logic";
 
-export type SolitaireCard = {
-  id: number;
-  rank: number;
-  suit: number;
+/**
+ * Card art is sized in `em`: the parent sets `font-size` to the card width in
+ * px, so every card scales with the board.
+ */
+
+/** Pip positions (percent of the pip area) for ranks 1–7. */
+const PIPS: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+  [[50, 50]],
+  [
+    [50, 24],
+    [50, 76],
+  ],
+  [
+    [50, 17],
+    [50, 50],
+    [50, 83],
+  ],
+  [
+    [28, 26],
+    [72, 26],
+    [28, 74],
+    [72, 74],
+  ],
+  [
+    [28, 20],
+    [72, 20],
+    [50, 50],
+    [28, 80],
+    [72, 80],
+  ],
+  [
+    [28, 17],
+    [72, 17],
+    [28, 50],
+    [72, 50],
+    [28, 83],
+    [72, 83],
+  ],
+  [
+    [28, 19],
+    [72, 19],
+    [50, 36],
+    [28, 53],
+    [72, 53],
+    [28, 83],
+    [72, 83],
+  ],
+];
+
+function pipSize(rank: number) {
+  if (rank === 0) return 0.72;
+  if (rank === 1) return 0.38;
+  if (rank === 2) return 0.28;
+  return 0.31;
+}
+
+const artStyle: CSSProperties = {
+  filter: "drop-shadow(0 0.012em 0.01em rgba(60,30,20,0.35))",
 };
 
 export function CardFace({
   card,
   profileId,
-  selected,
-  compact,
 }: {
-  card: SolitaireCard;
+  card: Card;
   profileId: ProfileId;
-  selected?: boolean;
-  compact?: boolean;
 }) {
+  const color = rankColor(profileId, card.suit);
+  const src = suitSrc(profileId, card.suit);
+  const size = pipSize(card.rank);
   return (
     <div
-      className={cn(
-        "relative flex flex-col overflow-hidden rounded-[1.05rem] border-[3px] border-white bg-[#fffaf3] shadow-[0_6px_0_rgba(40,20,50,0.18)]",
-        compact ? "h-[4.6rem] w-[3.35rem]" : "h-[5.7rem] w-[4.05rem]",
-        selected && "ring-4 ring-amber-300 ring-offset-2 ring-offset-transparent",
-      )}
+      className="absolute inset-0 overflow-hidden rounded-[0.12em] bg-[linear-gradient(160deg,#ffffff_0%,#fffaf2_55%,#fbefdf_100%)]"
+      style={{
+        boxShadow: `inset 0 0 0 0.025em ${color}33, inset 0 -0.03em 0 rgba(0,0,0,0.06)`,
+      }}
     >
-      <div className="flex items-start justify-between px-1.5 pt-1">
-        <span
-          className={cn(
-            "font-black leading-none",
-            compact ? "text-base" : "text-lg",
-            rankTone(profileId, card.suit),
-          )}
-        >
-          {RANKS[card.rank]}
-        </span>
-        <img
-          src={suitSrc(profileId, card.suit)}
-          alt=""
-          className={cn(
-            "rounded-md object-cover",
-            compact ? "h-4 w-4" : "h-5 w-5",
-          )}
-          draggable={false}
-        />
-      </div>
+      {/* Corner: big number + small suit, visible even when fanned. */}
+      <span
+        className="absolute left-[0.07em] top-[0.02em] font-black leading-none tracking-tight"
+        style={{
+          color,
+          fontSize: "0.4em",
+          textShadow: "0 0.03em 0 rgba(255,255,255,0.9)",
+        }}
+      >
+        {RANKS[card.rank]}
+      </span>
       <img
-        src={suitSrc(profileId, card.suit)}
-        alt={suitName(profileId, card.suit)}
-        className="mx-auto mt-0.5 w-[72%] flex-1 rounded-lg object-cover"
+        src={src}
+        alt=""
         draggable={false}
+        className="absolute right-[0.05em] top-[0.05em] h-[0.32em] w-[0.32em] object-contain"
+        style={artStyle}
       />
+      {/* Colour band under the corner so teams read at a glance. */}
+      <span
+        className="absolute left-[0.08em] right-[0.08em] top-[0.43em] h-[0.02em] rounded-full opacity-40"
+        style={{ background: color }}
+      />
+      <div className="absolute bottom-[0.06em] left-[0.06em] right-[0.06em] top-[0.53em]">
+        {PIPS[card.rank].map(([x, y], i) => (
+          <img
+            key={i}
+            src={src}
+            alt={i === 0 ? `${RANKS[card.rank]} ${suitName(profileId, card.suit)}` : ""}
+            draggable={false}
+            className="absolute object-contain"
+            style={{
+              ...artStyle,
+              width: `${size}em`,
+              height: `${size}em`,
+              left: `calc(${x}% - ${size / 2}em)`,
+              top: `calc(${y}% - ${size / 2}em)`,
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
-export function CardBack({
-  profileId,
-  count,
-}: {
-  profileId: ProfileId;
-  count?: number;
-}) {
+export function CardBack({ profileId }: { profileId: ProfileId }) {
   return (
-    <div className="relative h-[5.7rem] w-[4.05rem] overflow-hidden rounded-[1.05rem] border-[3px] border-white shadow-[0_6px_0_rgba(40,20,50,0.22)]">
+    <div className="absolute inset-0 overflow-hidden rounded-[0.12em] border-[0.04em] border-white bg-white">
       <img
         src={backSrc(profileId)}
-        alt="Draw pile"
-        className="h-full w-full object-cover"
+        alt=""
         draggable={false}
+        className="h-full w-full rounded-[0.08em] object-cover"
       />
-      {typeof count === "number" ? (
-        <span className="absolute bottom-1 right-1 rounded-full bg-black/55 px-1.5 text-[11px] font-black text-white">
-          {count}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-export function EmptySlot({
-  profileId,
-  suit,
-  label,
-  glow,
-}: {
-  profileId: ProfileId;
-  suit?: number;
-  label: string;
-  glow?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex h-[5.7rem] w-[4.05rem] flex-col items-center justify-center rounded-[1.05rem] border-[3px] border-dashed border-white/80 bg-white/25",
-        glow && "ring-4 ring-lime-300",
-      )}
-    >
-      {typeof suit === "number" ? (
-        <img
-          src={suitSrc(profileId, suit)}
-          alt=""
-          className="h-8 w-8 rounded-md object-cover opacity-80"
-          draggable={false}
-        />
-      ) : (
-        <span className="px-1 text-center text-[10px] font-bold text-white/90 drop-shadow">
-          {label}
-        </span>
-      )}
+      <div className="absolute inset-0 rounded-[0.08em] bg-[linear-gradient(135deg,rgba(255,255,255,0.35)_0%,transparent_40%,transparent_70%,rgba(0,0,0,0.12)_100%)]" />
     </div>
   );
 }

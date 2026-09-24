@@ -18,14 +18,6 @@ export type TileKind =
   | "car"
   | "planet";
 
-export type Slot = {
-  id: number;
-  col: number;
-  row: number;
-  layer: 0 | 1;
-  covers: number[];
-};
-
 const KEIRA_KINDS: TileKind[] = [
   "unicorn",
   "rainbow",
@@ -66,37 +58,37 @@ export function kindsFor(profileId: ProfileId): TileKind[] {
 export function tileSrc(kind: TileKind): string {
   switch (kind) {
     case "unicorn":
-      return "/games/mahjong/keira-unicorn.png";
+      return "/games/mahjong/keira-unicorn.jpg";
     case "rainbow":
-      return "/games/mahjong/keira-rainbow.png";
+      return "/games/mahjong/keira-rainbow.jpg";
     case "fairy":
-      return "/games/mahjong/keira-fairy.png";
+      return "/games/mahjong/keira-fairy.jpg";
     case "mermaid":
-      return "/games/mahjong/keira-mermaid.png";
+      return "/games/mahjong/keira-mermaid.jpg";
     case "crown":
-      return "/games/mahjong/keira-crown.png";
+      return "/games/mahjong/keira-crown.jpg";
     case "pearl":
-      return "/games/mahjong/keira-pearl.png";
+      return "/games/mahjong/keira-pearl.jpg";
     case "blossom":
-      return "/games/mahjong/keira-blossom.png";
+      return "/games/mahjong/keira-blossom.jpg";
     case "star":
-      return "/games/mahjong/keira-star.png";
+      return "/games/mahjong/keira-star.jpg";
     case "rocket":
-      return "/games/mahjong/luke-rocket.png";
+      return "/games/mahjong/luke-rocket.jpg";
     case "dino":
-      return "/games/mahjong/luke-dino.png";
+      return "/games/mahjong/luke-dino.jpg";
     case "bike":
-      return "/games/mahjong/luke-bike.png";
+      return "/games/mahjong/luke-bike.jpg";
     case "ball":
-      return "/games/mahjong/luke-ball.png";
+      return "/games/mahjong/luke-ball.jpg";
     case "fish":
-      return "/games/mahjong/luke-fish.png";
+      return "/games/mahjong/luke-fish.jpg";
     case "robot":
-      return "/games/mahjong/luke-robot.png";
+      return "/games/mahjong/luke-robot.jpg";
     case "car":
-      return "/games/mahjong/luke-car.png";
+      return "/games/mahjong/luke-car.jpg";
     case "planet":
-      return "/games/mahjong/luke-planet.png";
+      return "/games/mahjong/luke-planet.jpg";
     default:
       return assertNever(kind);
   }
@@ -144,9 +136,9 @@ export function kindLabel(kind: TileKind): string {
 export function tableSrc(profileId: ProfileId): string {
   switch (profileId) {
     case "keira":
-      return "/games/mahjong/keira-table.png";
+      return "/games/mahjong/keira-table.jpg";
     case "luke":
-      return "/games/mahjong/luke-table.png";
+      return "/games/mahjong/luke-table.jpg";
     default:
       return assertNever(profileId);
   }
@@ -155,20 +147,21 @@ export function tableSrc(profileId: ProfileId): string {
 export function winSrc(profileId: ProfileId): string {
   switch (profileId) {
     case "keira":
-      return "/games/mahjong/keira-win.png";
+      return "/games/mahjong/keira-win.jpg";
     case "luke":
-      return "/games/mahjong/luke-win.png";
+      return "/games/mahjong/luke-win.jpg";
     default:
       return assertNever(profileId);
   }
 }
 
-export function hintCopy(profileId: ProfileId): string {
+/** Side (thickness) colour per layer, so stacked tiles read at a glance. */
+export function layerColors(profileId: ProfileId): string[] {
   switch (profileId) {
     case "keira":
-      return "Tap two matching pictures. Top tiles come off first.";
+      return ["#dcb994", "#f472b6", "#a78bfa", "#2dd4bf"];
     case "luke":
-      return "Tap two matching pictures. Clear the top tiles first.";
+      return ["#c9ab7c", "#0ea5e9", "#f59e0b", "#22c55e"];
     default:
       return assertNever(profileId);
   }
@@ -177,38 +170,16 @@ export function hintCopy(profileId: ProfileId): string {
 export function blockedCopy(profileId: ProfileId): string {
   switch (profileId) {
     case "keira":
-      return "That tile is hiding — tap the one on top first.";
+      return "Hiding! Take the tile on top first.";
     case "luke":
-      return "Buried! Clear the tile sitting on top first.";
+      return "Buried! Clear the tile on top first.";
     default:
       return assertNever(profileId);
   }
 }
 
-export function missCopy(profileId: ProfileId): string {
-  switch (profileId) {
-    case "keira":
-      return "Not a pair — try two that look the same.";
-    case "luke":
-      return "Not a match — pick two that look the same.";
-    default:
-      return assertNever(profileId);
-  }
+export function introCopy(level: number): string {
+  return level === 0
+    ? "Tap two tiles that match!"
+    : `Level ${level + 1} — bright tiles are free!`;
 }
-
-/** 4×4 base plus four stacked tiles on the center. */
-export const SLOTS: Slot[] = [
-  ...Array.from({ length: 16 }, (_, id) => ({
-    id,
-    col: id % 4,
-    row: Math.floor(id / 4),
-    layer: 0 as const,
-    covers: [] as number[],
-  })),
-  { id: 16, col: 1, row: 1, layer: 1, covers: [5] },
-  { id: 17, col: 2, row: 1, layer: 1, covers: [6] },
-  { id: 18, col: 1, row: 2, layer: 1, covers: [9] },
-  { id: 19, col: 2, row: 2, layer: 1, covers: [10] },
-];
-
-export const PAIR_COUNT = 10;
