@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
+import Link from "next/link";
+import { ArrowLeft, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import type { GameProps } from "@/lib/game-registry";
-import { CanvasStage, GameOverlay, canvasPoint, prepareCanvas } from "@/components/game-kit";
-import { haptic, sfx } from "@/lib/sfx";
+import { GameOverlay } from "@/components/game-kit";
+import { haptic, isMuted, onMutedChange, setMuted, sfx } from "@/lib/sfx";
 import { cn } from "@/lib/utils";
 import { H, LEVELS, PLANTS, PLANT_ORDER, W, type PlantKind } from "./balance";
 import { drawFrame } from "./draw";
@@ -26,17 +28,23 @@ type Ui = {
   phase: Phase;
   level: number;
   sun: number;
+  hearts: number;
   selected: TrayChoice | null;
   cd: Record<PlantKind, number>;
   kills: number;
   total: number;
 };
 
+function useMuted() {
+  return useSyncExternalStore(onMutedChange, isMuted, () => false);
+}
+
 function snapshot(m: Match): Ui {
   return {
     phase: m.phase,
     level: m.level,
     sun: m.sun,
+    hearts: m.hearts,
     selected: m.selected,
     cd: { ...m.cd },
     kills: m.kills,
@@ -46,11 +54,64 @@ function snapshot(m: Match): Ui {
 
 function sig(ui: Ui) {
   const cds = PLANT_ORDER.map((k) => Math.ceil(ui.cd[k] * 4)).join(",");
-  return `${ui.phase}|${ui.level}|${ui.sun}|${ui.selected}|${ui.kills}|${cds}`;
+  return `${ui.phase}|${ui.level}|${ui.sun}|${ui.hearts}|${ui.selected}|${ui.kills}|${cds}`;
+}
+
+function paintBoard(
+  canvas: HTMLCanvasElement | null,
+  stage: HTMLDivElement | null,
+  hud: HTMLDivElement | null,
+  tray: HTMLDivElement | null,
+  m: Match,
+  font: string,
+) {
+  if (!canvas || !stage) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const cssW = stage.clientWidth;
+  const cssH = stage.clientHeight;
+  if (cssW < 2 || cssH < 2) return;
+  const bw = Math.max(1, Math.round(cssW * dpr));
+  const bh = Math.max(1, Math.round(cssH * dpr));
+  if (canvas.width !== bw || canvas.height !== bh) {
+    canvas.width = bw;
+    canvas.height = bh;
+  }
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const hudH = (hud?.offsetHeight ?? 0) * dpr;
+  const trayH = (tray?.offsetHeight ?? 0) * dpr;
+  const lawnH = Math.max(1, bh - hudH - trayH);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = "#166534";
+  ctx.fillRect(0, 0, bw, bh);
+  ctx.setTransform(bw / W, 0, 0, lawnH / H, 0, hudH);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  drawFrame(ctx, m, font);
+}
+
+function gamePoint(
+  e: { clientX: number; clientY: number },
+  stage: HTMLDivElement,
+  hud: HTMLDivElement | null,
+  tray: HTMLDivElement | null,
+) {
+  const r = stage.getBoundingClientRect();
+  if (r.width < 2 || r.height < 2) return null;
+  const hudH = hud?.offsetHeight ?? 0;
+  const trayH = tray?.offsetHeight ?? 0;
+  const lawnH = Math.max(1, r.height - hudH - trayH);
+  return {
+    x: ((e.clientX - r.left) / r.width) * W,
+    y: ((e.clientY - r.top - hudH) / lawnH) * H,
+  };
 }
 
 export default function MeadowGuard({ paused, onScoreChange }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const hudRef = useRef<HTMLDivElement | null>(null);
+  const trayRef = useRef<HTMLDivElement | null>(null);
   const simRef = useRef<Match | null>(null);
   const pausedRef = useRef(paused);
   const scoreCb = useRef(onScoreChange);
@@ -58,10 +119,14 @@ export default function MeadowGuard({ paused, onScoreChange }: GameProps) {
   const [ui, setUi] = useState<Ui>(() => snapshot(createMatch(1, 0)));
   const [portrait, setPortrait] = useState(false);
   const [dismissRotate, setDismissRotate] = useState(false);
+  const [localPause, setLocalPause] = useState(false);
+  const localPauseRef = useRef(false);
+  const muted = useMuted();
 
   useEffect(() => {
     pausedRef.current = paused;
-  }, [paused]);
+    localPauseRef.current = localPause;
+  }, [paused, localPause]);
   useEffect(() => {
     scoreCb.current = onScoreChange;
   }, [onScoreChange]);
@@ -95,13 +160,8 @@ export default function MeadowGuard({ paused, onScoreChange }: GameProps) {
       raf = requestAnimationFrame(loop);
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (!pausedRef.current) step(m, dt);
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext("2d");
-      if (ctx) {
-        prepareCanvas(ctx, W);
-        drawFrame(ctx, m, fontRef.current);
-      }
+      if (!pausedRef.current && !localPauseRef.current) step(m, dt);
+      paintBoard(canvasRef.current, stageRef.current, hudRef.current, trayRef.current, m, fontRef.current);
       if (m.cues.length) {
         for (const cue of m.cues) sfx(cue);
         if (m.cues.includes("pop")) haptic(12);
@@ -131,44 +191,108 @@ export default function MeadowGuard({ paused, onScoreChange }: GameProps) {
 
   const onPick = (kind: TrayChoice) => {
     const m = simRef.current;
-    if (!m || paused) return;
+    if (!m || paused || localPause) return;
     choose(m, kind);
+    sync();
+  };
+
+  const hold = paused || localPause;
+
+  const onLawnPointer = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    const m = simRef.current;
+    const stage = stageRef.current;
+    if (!m || !stage) return;
+    if (e.type === "pointerleave") {
+      m.hoverCol = -1;
+      m.hoverRow = -1;
+      return;
+    }
+    const point = gamePoint(e, stage, hudRef.current, trayRef.current);
+    if (!point) return;
+    if (e.type === "pointermove") {
+      setHover(m, point.x, point.y);
+      return;
+    }
+    if (hold) return;
+    e.preventDefault();
+    tapLawn(m, point.x, point.y);
     sync();
   };
 
   const def = levelDef(ui?.level ?? 1);
   const phase = ui?.phase ?? "ready";
 
+  const hearts = ui?.hearts ?? def.hearts;
+
   return (
-    <div className="game-root relative">
-      <CanvasStage
-        width={W}
-        height={H}
-        canvasRef={canvasRef}
-        onPointerDown={(e) => {
-          const m = simRef.current;
-          const canvas = canvasRef.current;
-          if (!m || !canvas || paused) return;
-          e.preventDefault();
-          const p = canvasPoint(e, canvas, W, H);
-          tapLawn(m, p.x, p.y);
-          sync();
-        }}
-        onPointerMove={(e) => {
-          const m = simRef.current;
-          const canvas = canvasRef.current;
-          if (!m || !canvas) return;
-          const p = canvasPoint(e, canvas, W, H);
-          setHover(m, p.x, p.y);
-        }}
-        onPointerLeave={() => {
-          const m = simRef.current;
-          if (!m) return;
-          m.hoverCol = -1;
-          m.hoverRow = -1;
+    <div ref={stageRef} className="fixed inset-0 z-50 overflow-hidden bg-[#14532d]">
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 h-full w-full touch-none"
+        onPointerDown={onLawnPointer}
+        onPointerMove={onLawnPointer}
+        onPointerLeave={onLawnPointer}
+      />
+      <div
+        ref={hudRef}
+        className="absolute inset-x-0 top-0 z-20 flex items-center gap-1.5 bg-gradient-to-b from-emerald-950/80 to-emerald-950/0 px-1.5 pb-1"
+        style={{
+          paddingTop: "max(env(safe-area-inset-top), 4px)",
+          paddingLeft: "max(env(safe-area-inset-left), 6px)",
+          paddingRight: "max(env(safe-area-inset-right), 6px)",
         }}
       >
+        <Link
+          href="/"
+          aria-label="Back to menu"
+          className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/90 text-[var(--ink)] shadow"
+          onClick={() => sfx("tap")}
+        >
+          <ArrowLeft className="size-5" strokeWidth={3} />
+        </Link>
+        <span className="inline-flex h-9 items-center gap-1 rounded-xl bg-amber-300 px-2 text-sm font-black text-amber-950 shadow">
+          <span aria-hidden className="text-base leading-none">☀</span>
+          {ui?.sun ?? 0}
+        </span>
+        <span className="inline-flex h-9 items-center gap-0.5 rounded-xl bg-white/90 px-2 text-sm shadow" aria-label={`${hearts} cottage hearts`}>
+          {Array.from({ length: def.hearts }, (_, i) => (
+            <span key={i} className={i < hearts ? "text-rose-500" : "text-white/70"}>
+              ♥
+            </span>
+          ))}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-center text-sm font-black text-white drop-shadow">
+          {def.name}
+          <span className="ml-1 tabular-nums text-white/80">{ui?.kills ?? 0}/{ui?.total ?? def.spawns.length}</span>
+        </span>
+        <button
+          type="button"
+          aria-label={muted ? "Sound on" : "Sound off"}
+          className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/90 text-[var(--ink)] shadow"
+          onClick={() => {
+            setMuted(!muted);
+            if (muted) sfx("pop");
+          }}
+        >
+          {muted ? <VolumeX className="size-5" strokeWidth={2.75} /> : <Volume2 className="size-5" strokeWidth={2.75} />}
+        </button>
+        <button
+          type="button"
+          aria-label={hold ? "Resume" : "Pause"}
+          aria-pressed={hold}
+          className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/90 text-[var(--ink)] shadow"
+          onClick={() => {
+            sfx("tap");
+            setLocalPause((p) => !p);
+          }}
+        >
+          {hold ? <Play className="size-5" strokeWidth={3} /> : <Pause className="size-5" strokeWidth={3} />}
+        </button>
+      </div>
+
+      <div className="pointer-events-none absolute inset-0 z-30">
         <GameOverlay
+          className="pointer-events-auto"
           show={phase === "ready"}
           emoji="🌻"
           title={ui && ui.level > 1 ? def.name : "Meadow Guard"}
@@ -182,6 +306,7 @@ export default function MeadowGuard({ paused, onScoreChange }: GameProps) {
           }}
         />
         <GameOverlay
+          className="pointer-events-auto"
           show={phase === "cleared"}
           tone="win"
           emoji="🌿"
@@ -196,6 +321,7 @@ export default function MeadowGuard({ paused, onScoreChange }: GameProps) {
           }}
         />
         <GameOverlay
+          className="pointer-events-auto"
           show={phase === "won"}
           tone="win"
           emoji="🏡"
@@ -211,6 +337,7 @@ export default function MeadowGuard({ paused, onScoreChange }: GameProps) {
           }}
         />
         <GameOverlay
+          className="pointer-events-auto"
           show={phase === "lost"}
           tone="lose"
           emoji="💨"
@@ -226,9 +353,29 @@ export default function MeadowGuard({ paused, onScoreChange }: GameProps) {
             sync();
           }}
         />
-      </CanvasStage>
+      </div>
 
-      <div className="grid w-full shrink-0 grid-cols-6 gap-1 px-1 pb-0.5">
+      {hold && phase === "play" ? (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-emerald-950/45 p-4">
+          <button
+            type="button"
+            className="kid-btn kid-btn-primary min-h-14 px-8 text-xl"
+            onClick={() => setLocalPause(false)}
+          >
+            <Play className="size-6" fill="currentColor" /> Keep playing
+          </button>
+        </div>
+      ) : null}
+
+      <div
+        ref={trayRef}
+        className="absolute inset-x-0 bottom-0 z-20 grid grid-cols-6 gap-1 bg-emerald-950/90 px-1 pt-1"
+        style={{
+          paddingBottom: "max(env(safe-area-inset-bottom), 4px)",
+          paddingLeft: "max(env(safe-area-inset-left), 4px)",
+          paddingRight: "max(env(safe-area-inset-right), 4px)",
+        }}
+      >
         {PLANT_ORDER.map((kind) => {
           const stats = PLANTS[kind];
           const locked = (ui?.level ?? 1) < stats.unlock;
@@ -250,23 +397,23 @@ export default function MeadowGuard({ paused, onScoreChange }: GameProps) {
                 onPick(kind);
               }}
               className={cn(
-                "kid-btn relative h-[3.35rem] flex-col gap-0 rounded-2xl px-0.5 py-1 text-[10px] leading-none sm:h-16 sm:text-xs",
-                selected ? "kid-btn-primary" : "kid-btn-secondary",
-                !selected && !afford && !locked && "opacity-80",
+                "relative flex h-12 min-w-0 items-center gap-1 rounded-xl bg-white px-1 text-left shadow-[0_3px_0_rgba(0,0,0,0.25)]",
+                selected && "outline outline-[3px] outline-amber-300",
+                locked && "opacity-80",
+                !afford && !locked && "opacity-90",
               )}
             >
               <PlantGlyph kind={kind} />
-              <span className="mt-0.5 max-w-full truncate font-black">{stats.name}</span>
-              <span className={cn("font-black", afford ? "text-amber-700" : "text-rose-600")}>
-                {stats.cost}
-              </span>
-              {locked ? (
-                <span className="absolute inset-0 grid place-items-center rounded-2xl bg-white/80 text-[10px] font-black text-[var(--ink)]">
-                  Meadow {stats.unlock}
+              <span className="min-w-0">
+                <span className="block whitespace-nowrap text-[12px] font-black leading-none text-emerald-950">
+                  {stats.name}
                 </span>
-              ) : null}
+                <span className={cn("mt-0.5 block text-[11px] font-black leading-none", afford || locked ? "text-amber-700" : "text-rose-600")}>
+                  {locked ? "Locked" : stats.cost}
+                </span>
+              </span>
               {cd > 0 && !locked ? (
-                <span className="absolute inset-0 grid place-items-center rounded-2xl bg-[var(--ink)]/55 text-sm font-black text-white">
+                <span className="absolute right-0.5 top-0.5 rounded-md bg-emerald-950/80 px-1 text-[10px] font-black leading-tight text-white">
                   {Math.ceil(cd)}
                 </span>
               ) : null}
@@ -282,13 +429,15 @@ export default function MeadowGuard({ paused, onScoreChange }: GameProps) {
             onPick("trowel");
           }}
           className={cn(
-            "kid-btn relative h-[3.35rem] flex-col gap-0 rounded-2xl px-0.5 py-1 text-[10px] leading-none sm:h-16 sm:text-xs",
-            ui?.selected === "trowel" ? "kid-btn-primary" : "kid-btn-secondary",
+            "relative flex h-12 min-w-0 items-center gap-1 rounded-xl bg-white px-1 text-left text-emerald-950 shadow-[0_3px_0_rgba(0,0,0,0.25)]",
+            ui?.selected === "trowel" && "outline outline-[3px] outline-amber-300",
           )}
         >
           <TrowelGlyph />
-          <span className="mt-0.5 font-black">Trowel</span>
-          <span className="font-black text-[var(--ink)]/50">dig</span>
+          <span className="min-w-0">
+            <span className="block whitespace-nowrap text-[12px] font-black leading-none">Trowel</span>
+            <span className="mt-0.5 block text-[11px] font-black leading-none text-emerald-800/70">Dig</span>
+          </span>
         </button>
       </div>
 
@@ -326,7 +475,7 @@ export default function MeadowGuard({ paused, onScoreChange }: GameProps) {
 }
 
 function PlantGlyph({ kind }: { kind: PlantKind }) {
-  const common = "h-6 w-6 sm:h-7 sm:w-7";
+  const common = "h-7 w-7 shrink-0";
   if (kind === "sunbloom") {
     return (
       <svg viewBox="0 0 32 32" className={common} aria-hidden>
@@ -389,7 +538,7 @@ function PlantGlyph({ kind }: { kind: PlantKind }) {
 
 function TrowelGlyph() {
   return (
-    <svg viewBox="0 0 32 32" className="h-6 w-6 sm:h-7 sm:w-7" aria-hidden>
+    <svg viewBox="0 0 32 32" className="h-7 w-7 shrink-0" aria-hidden>
       <path d="M8 8 h10 l6 6 l-8 8 l-6-6 z" fill="#d7d2cb" stroke="#6b645c" />
       <path d="M14 20 l8 8" stroke="#8a5a3c" strokeWidth="3" strokeLinecap="round" />
     </svg>

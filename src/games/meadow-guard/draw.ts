@@ -7,7 +7,6 @@ import {
   LAWN_LEFT,
   LAWN_RIGHT,
   LAWN_TOP,
-  LEVELS,
   ROWS,
   W,
   colCenter,
@@ -52,7 +51,6 @@ export function drawFrame(ctx: CanvasRenderingContext2D, m: Match, font: string)
   for (const p of m.parts) drawPart(ctx, p, font);
   for (const s of m.suns) drawSunOrb(ctx, s);
   ctx.restore();
-  drawHud(ctx, m, font);
   if (m.bannerT > 0 && m.banner) drawBanner(ctx, m, font);
 }
 
@@ -150,15 +148,23 @@ function drawLawn(ctx: CanvasRenderingContext2D, m: Match) {
   for (let r = 0; r < ROWS; r++) {
     const base = LAWN_TOP + (r + 1) * CELL_H - 5;
     for (let c = 0; c < COLS; c++) {
-      for (let b = 0; b < 3; b++) {
-        const x = LAWN_LEFT + c * CELL_W + 10 + b * 22;
-        const h = 7 + (b % 2) * 3;
-        const sway = Math.sin(m.time * 2.2 + x * 0.08 + r) * 3;
+      for (let b = 0; b < 6; b++) {
+        const x = LAWN_LEFT + c * CELL_W + 6 + b * 12;
+        const h = 9 + (b % 3) * 4;
+        const sway = Math.sin(m.time * 2.2 + x * 0.08 + r) * 4;
         ctx.beginPath();
         ctx.moveTo(x, base);
-        ctx.quadraticCurveTo(x + sway * 0.4, base - h * 0.6, x + sway, base - h);
+        ctx.quadraticCurveTo(x + sway * 0.45, base - h * 0.55, x + sway, base - h);
         ctx.stroke();
       }
+      const cx = LAWN_LEFT + c * CELL_W + 18 + (r % 3) * 14;
+      const cy = base - 16 - (c % 2) * 8;
+      ctx.fillStyle = "#3f8f45";
+      ctx.beginPath();
+      ctx.arc(cx - 3, cy, 2.2, 0, Math.PI * 2);
+      ctx.arc(cx + 3, cy, 2.2, 0, Math.PI * 2);
+      ctx.arc(cx, cy - 2.4, 2.2, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
@@ -296,7 +302,7 @@ function drawPlant(ctx: CanvasRenderingContext2D, p: Plant, time: number) {
   const y = rowFeet(p.row);
   ctx.save();
   ctx.translate(x, y);
-  const s = popScale(p.age);
+  const s = popScale(p.age) * 1.48;
   ctx.scale(s, s);
   shadow(ctx, 0, -2, 16, 5);
   if (p.kind === "sunbloom") drawSunbloom(ctx, time + p.col);
@@ -565,7 +571,7 @@ function drawCreeper(ctx: CanvasRenderingContext2D, z: Creeper, time: number) {
   ctx.save();
   ctx.translate(z.x, y);
   ctx.globalAlpha = fade;
-  ctx.scale(fade, fade);
+  ctx.scale(fade * 1.48, fade * 1.48);
   shadow(ctx, 0, -2, z.kind === "barkhelm" ? 20 : 14, 5);
   if (z.kind === "mulchling") drawMulchling(ctx, z, time);
   else if (z.kind === "dashling") drawDashling(ctx, z, time);
@@ -735,7 +741,7 @@ function drawSunOrb(ctx: CanvasRenderingContext2D, s: SunOrb) {
   ctx.strokeStyle = "rgba(255, 220, 120, 0.9)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(0, 0, 26 + Math.sin(s.age * 4) * 2, 0, Math.PI * 2);
+  ctx.arc(0, 0, 34 + Math.sin(s.age * 4) * 2, 0, Math.PI * 2);
   ctx.stroke();
   const g = ctx.createRadialGradient(-4, -4, 2, 0, 0, 18);
   g.addColorStop(0, "#fff6c4");
@@ -743,7 +749,7 @@ function drawSunOrb(ctx: CanvasRenderingContext2D, s: SunOrb) {
   g.addColorStop(1, "#f0a202");
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.arc(0, 0, 16, 0, Math.PI * 2);
+  ctx.arc(0, 0, 22, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = "#fff3bf";
   ctx.lineWidth = 2;
@@ -837,52 +843,6 @@ function drawPart(
   ctx.restore();
 }
 
-function drawHud(ctx: CanvasRenderingContext2D, m: Match, font: string) {
-  const def = LEVELS[m.level - 1];
-  // Sun pill
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  round(ctx, 8, 6, 92, 32, 16);
-  ctx.fill();
-  const g = ctx.createRadialGradient(26, 22, 1, 28, 22, 12);
-  g.addColorStop(0, "#fff6c4");
-  g.addColorStop(1, "#ffc107");
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(28, 22, 10, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#6a4a12";
-  ctx.font = `700 20px ${font}`;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.fillText(String(m.sun), 44, 23);
-
-  // Hearts
-  for (let i = 0; i < def.hearts; i++) {
-    heart(ctx, 118 + i * 22, 22, i < m.hearts ? "#e85d75" : "rgba(255,255,255,0.35)");
-  }
-
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  const label = `Meadow ${m.level} · ${def.name}`;
-  ctx.font = `700 15px ${font}`;
-  const w = ctx.measureText(label).width + 22;
-  round(ctx, W / 2 - w / 2, 6, w, 28, 14);
-  ctx.fill();
-  ctx.fillStyle = "#24502a";
-  ctx.textAlign = "center";
-  ctx.fillText(label, W / 2, 21);
-
-  const left = `${m.kills}/${def.spawns.length}`;
-  ctx.font = `700 14px ${font}`;
-  const lw = ctx.measureText(left).width + 20;
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  round(ctx, W - lw - 10, 8, lw, 26, 13);
-  ctx.fill();
-  ctx.fillStyle = "#24502a";
-  ctx.textAlign = "center";
-  ctx.fillText(left, W - lw / 2 - 10, 22);
-  ctx.textBaseline = "alphabetic";
-}
-
 function drawBanner(ctx: CanvasRenderingContext2D, m: Match, font: string) {
   ctx.save();
   ctx.globalAlpha = Math.min(1, m.bannerT * 2);
@@ -896,15 +856,6 @@ function drawBanner(ctx: CanvasRenderingContext2D, m: Match, font: string) {
   ctx.textBaseline = "middle";
   ctx.fillText(m.banner, W / 2, H - 22);
   ctx.restore();
-}
-
-function heart(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(x, y + 4);
-  ctx.bezierCurveTo(x - 8, y - 2, x - 4, y - 8, x, y - 3);
-  ctx.bezierCurveTo(x + 4, y - 8, x + 8, y - 2, x, y + 4);
-  ctx.fill();
 }
 
 function round(

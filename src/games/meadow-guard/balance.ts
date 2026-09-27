@@ -9,9 +9,9 @@ export const W = 800;
 export const H = 340;
 
 export const LAWN_LEFT = 108;
-export const LAWN_TOP = 36;
+export const LAWN_TOP = 8;
 export const CELL_W = 76;
-export const CELL_H = 58;
+export const CELL_H = 64;
 
 export const LAWN_RIGHT = LAWN_LEFT + COLS * CELL_W;
 export const LAWN_BOTTOM = LAWN_TOP + ROWS * CELL_H;
