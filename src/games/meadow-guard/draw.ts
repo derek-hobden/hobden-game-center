@@ -92,7 +92,7 @@ export function drawFrame(
   const Y = (y: number) => view.oy + y * sy;
   const cellW = CELL_W * sx;
   const cellH = CELL_H * sy;
-  const sprite = Math.min(cellW / 46, cellH / 68);
+  const sprite = Math.min(cellW / 28, cellH / 46);
   const unit = (sx + sy) * 0.5;
 
   ctx.save();
@@ -172,17 +172,24 @@ function drawLawn(
           blade(ctx, bx, by, bh, lean, colors.blades[(br + bc + c) % colors.blades.length]);
         }
       }
-      const flowerN = 1 + (hash(r * 40 + c * 7) > 0.45 ? 1 : 0);
+      const shrub = Math.min(h * 0.32, cellW * 0.62);
+      bush(ctx, cx0 + cellW * 0.28, y0 + h * 0.2, shrub, (c + r) % 2 === 0);
+      bush(ctx, cx0 + cellW * 0.72, y0 + h * 0.14, shrub * 0.72, (c + r) % 3 === 0);
+      const flowerN = 2;
       for (let f = 0; f < flowerN; f++) {
         const n = hash(r * 90 + c * 13 + f * 5 + 2);
-        const fx = cx0 + 8 + n * (cellW - 16);
-        const fy = y0 + h * (0.28 + hash(r * 3 + c * 11 + f) * 0.5);
-        const fs = Math.min(cellW, h) * (0.16 + n * 0.08);
+        const fx = cx0 + cellW * (0.18 + n * 0.64);
+        const fy = y0 + h * (0.38 + hash(r * 3 + c * 11 + f) * 0.28);
+        const fs = Math.min(h * 0.2, cellW * 0.5) * (0.85 + n * 0.35);
         const petal = colors.flowers[(c + r + f) % colors.flowers.length];
-        if (n > 0.82) clover(ctx, fx, fy, fs * 0.7);
-        else if (n > 0.62) tulip(ctx, fx, fy, fs, petal, m.time, n * 6);
+        if (n > 0.78) clover(ctx, fx, fy, fs * 0.65);
+        else if (n > 0.5) tulip(ctx, fx, fy, fs, petal, m.time, n * 6);
         else daisy(ctx, fx, fy, fs, petal, m.time, n * 8);
       }
+      ctx.fillStyle = "rgba(92, 58, 24, 0.16)";
+      ctx.beginPath();
+      ctx.ellipse(cx0 + cellW * 0.5, y0 + h * 0.78, cellW * 0.22, Math.max(3, h * 0.06), 0, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     ctx.fillStyle = "rgba(92, 58, 24, 0.07)";
@@ -273,6 +280,22 @@ function tulip(
   ctx.quadraticCurveTo(-s * 0.32, -s * 0.7, 0, -s * 0.95);
   ctx.fill();
   ctx.stroke();
+  ctx.restore();
+}
+
+function bush(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, deep: boolean) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = deep ? "#1f5c2c" : "#2f8a38";
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.22, s * 0.08, s * 0.38, s * 0.28, 0, 0, Math.PI * 2);
+  ctx.ellipse(s * 0.2, s * 0.04, s * 0.34, s * 0.26, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -s * 0.16, s * 0.3, s * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = deep ? "#3d9a44" : "#8ed36a";
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.08, -s * 0.22, s * 0.12, s * 0.08, -0.4, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -623,6 +646,7 @@ function eye(
   seed: number,
   mood: "soft" | "focus" | "angry" = "soft",
 ) {
+  s *= 1.45;
   const blink = Math.sin(time * 1.35 + seed) > 0.972;
   ctx.fillStyle = "rgba(30, 20, 10, 0.12)";
   ctx.beginPath();
@@ -704,16 +728,16 @@ function drawLeg(
   ctx.save();
   ctx.translate(hipX, -lift * 3.2);
   ctx.rotate(swing * 0.55);
-  const thigh = 12 * length;
+  const thigh = 11 * length;
   ctx.fillStyle = style.cloth;
   ctx.strokeStyle = style.outline;
-  ctx.lineWidth = 1.35;
+  ctx.lineWidth = 1.8;
   ctx.lineJoin = "round";
   ctx.beginPath();
-  ctx.moveTo(-5, 0);
-  ctx.quadraticCurveTo(-6.4, thigh * 0.55, -4.2, thigh);
-  ctx.lineTo(4.4, thigh);
-  ctx.quadraticCurveTo(6.2, thigh * 0.4, 5, 0);
+  ctx.moveTo(-6.4, 0);
+  ctx.quadraticCurveTo(-8, thigh * 0.55, -5.4, thigh);
+  ctx.lineTo(5.6, thigh);
+  ctx.quadraticCurveTo(8, thigh * 0.4, 6.4, 0);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
@@ -736,7 +760,7 @@ function drawLeg(
   ctx.stroke();
   ctx.fillStyle = style.boot;
   ctx.beginPath();
-  ctx.ellipse(2.2, calf + 1.2, 6.6, 3.1, -0.1, 0, Math.PI * 2);
+  ctx.ellipse(3, calf + 1.6, 8.4, 4, -0.08, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = style.outline;
   ctx.stroke();
@@ -929,7 +953,7 @@ function drawPodsnap(ctx: CanvasRenderingContext2D, time: number, mouth: number)
   ctx.translate(4, -26);
   ctx.fillStyle = "#14381c";
   ctx.beginPath();
-  ctx.ellipse(10, 0, 7, 2.2 + open * 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(14, 0, 9, 2.4 + open * 4.2, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = "#145022";
   ctx.lineWidth = 1.4;
@@ -937,7 +961,7 @@ function drawPodsnap(ctx: CanvasRenderingContext2D, time: number, mouth: number)
   ctx.rotate(-0.08 - open * 0.42);
   ctx.fillStyle = "#2f9a3e";
   ctx.beginPath();
-  ctx.ellipse(9, -3.2, 12, 5.2, -0.12, 0, Math.PI * 2);
+  ctx.ellipse(14, -3.6, 16, 6, -0.1, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#b6e98a";
@@ -949,7 +973,7 @@ function drawPodsnap(ctx: CanvasRenderingContext2D, time: number, mouth: number)
   ctx.rotate(0.05 + open * 0.38);
   ctx.fillStyle = "#1f7a30";
   ctx.beginPath();
-  ctx.ellipse(9, 3.4, 11.5, 4.6, 0.08, 0, Math.PI * 2);
+  ctx.ellipse(14, 4, 15.5, 5.4, 0.08, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#f4fff0";
@@ -1030,9 +1054,9 @@ function thorn(ctx: CanvasRenderingContext2D, x: number, y: number, rot: number)
   ctx.strokeStyle = "#6d6448";
   ctx.lineWidth = 0.9;
   ctx.beginPath();
-  ctx.moveTo(0, -8);
-  ctx.lineTo(2.6, 2);
-  ctx.lineTo(-2.6, 2);
+  ctx.moveTo(0, -13);
+  ctx.lineTo(3.4, 3);
+  ctx.lineTo(-3.4, 3);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
@@ -1293,17 +1317,24 @@ function drawMulchling(ctx: CanvasRenderingContext2D, z: Creeper, time: number) 
   ctx.beginPath();
   ctx.ellipse(7, -18, 3.4, 2.2, -0.3, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "#6b4a2a";
-  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = "#2f6a28";
+  ctx.lineWidth = 2.6;
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.moveTo(4, -38);
-  ctx.lineTo(8, -46);
+  ctx.moveTo(1, -40);
+  ctx.quadraticCurveTo(8, -54, 3, -62);
   ctx.stroke();
   ctx.fillStyle = "#67c15a";
+  ctx.strokeStyle = "#1d5a24";
+  ctx.lineWidth = 1.3;
   ctx.beginPath();
-  ctx.ellipse(10, -46, 4, 2, 0.6, 0, Math.PI * 2);
-  ctx.ellipse(5, -47, 3.2, 1.7, -0.5, 0, Math.PI * 2);
+  ctx.ellipse(9, -60, 8, 3.4, 0.8, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(-1, -63, 6.5, 3, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
   const reach = z.eating ? -2.1 + Math.sin(z.walk * 2) * 0.35 : -0.9;
   drawArm(ctx, -10, -24, reach, MULCH, 0.95);
   drawArm(ctx, 10, -22, 2.4, MULCH, 0.8);
@@ -1403,7 +1434,7 @@ function drawBarkhelm(ctx: CanvasRenderingContext2D, z: Creeper, time: number) {
   ctx.fillStyle = "#5c4030";
   ctx.strokeStyle = "#2a1c12";
   ctx.lineWidth = 1.4;
-  round(ctx, -16, -50, 32, 16, 7);
+  round(ctx, -18, -52, 36, 18, 8);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#3e2c1e";
@@ -1436,12 +1467,12 @@ function drawGnasher(ctx: CanvasRenderingContext2D, z: Creeper, time: number) {
   const chomp = z.eating ? 5 + Math.abs(Math.sin(z.walk * 2.2)) * 8 : 2.5;
   ctx.fillStyle = "#8d4a62";
   ctx.beginPath();
-  ctx.ellipse(-4, -30, 14, 10, -0.15, 0, Math.PI * 2);
+  ctx.ellipse(-6, -32, 16, 11, -0.2, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#6e384c";
   ctx.beginPath();
-  ctx.ellipse(-6, -18 + chomp * 0.15, 12, 6 + chomp * 0.15, 0.1, 0, Math.PI * 2);
+  ctx.ellipse(-8, -16 + chomp * 0.12, 14, 7 + chomp * 0.12, 0.15, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#2a1520";
