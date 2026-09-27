@@ -52,6 +52,7 @@ export const PROFILES: Record<ProfileId, ProfileTheme> = {
       solitaire: "Card Garden",
       mahjong: "Pearl Match",
       pinball: "Rainbow Pinball",
+      "meadow-guard": "Fairy Meadow",
     },
   },
   luke: {
@@ -86,6 +87,7 @@ export const PROFILES: Record<ProfileId, ProfileTheme> = {
       solitaire: "Card Deck",
       mahjong: "Tile Match",
       pinball: "Arcade Pinball",
+      "meadow-guard": "Lawn Patrol",
     },
   },
 };

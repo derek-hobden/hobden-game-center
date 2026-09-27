@@ -176,6 +176,17 @@ export const GAME_REGISTRY: GameMeta[] = [
     icon: "🕹️",
     load: () => import("@/games/pinball"),
   },
+  {
+    id: "meadow-guard",
+    title: "Meadow Guard",
+    ages: "4+",
+    controlHint: "Tap sun, then a lawn square",
+    blurb: "Plant a garden. Stop the creepers.",
+    status: "ready",
+    accent: "#65a30d",
+    icon: "🌻",
+    load: () => import("@/games/meadow-guard"),
+  },
 ];
 
 export function getGame(id: string): GameMeta | undefined {
